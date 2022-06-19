@@ -8,12 +8,37 @@ import 'local_notification_api.dart';
 class NotificationApi {
   static FirebaseMessaging messaging = FirebaseMessaging.instance;
 
+  /// How to use it?
+  /// in main()
+  // FirebaseMessaging.onBackgroundMessage(
+  // NotificationApi.firebaseMessagingBackgroundHandler);
+  //
+  /// Enabling foreground notifications for Android
+  /// by Creating A channel on Android devices
+  // await LocalNotificationApi.localNotifications
+  //     .resolvePlatformSpecificImplementation<
+  //     AndroidFlutterLocalNotificationsPlugin>()
+  //     ?.createNotificationChannel(
+  // LocalNotificationApi.androidNotificationChannel);
+  //
+  /// Enabling foreground notifications for IOS
+  // await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+  // alert: true,
+  // badge: true,
+  // sound: true,
+  // );
+
+  /// in MyApp class
+  // @override
+  // void initState() {
+  //   LocalNotificationApi.init();
+  //   NotificationApi.requestPermission();
+  //   NotificationApi.foregroundNotification();
+  //   NotificationApi.setupInteractedMessage();
+  //   super.initState();
+  // }
+
   static void requestPermission() async {
-    /// in MyApp class
-    //  in initState() {
-    //     NotificationApi.requestPermission();
-    //     super.initState();
-    //   }
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       announcement: false,
@@ -30,19 +55,11 @@ class NotificationApi {
   /// Handle background message only not notification
   static Future<void> firebaseMessagingBackgroundHandler(
       RemoteMessage message) async {
-    /// in main
-    // FirebaseMessaging.onBackgroundMessage(NotificationApi.firebaseMessagingBackgroundHandler);
     print("Handling a background message: ${message.messageId}");
   }
 
   /// Handle Foreground message and notification
   static void foregroundNotification() {
-    /// in MyApp class
-    //  in initState() {
-    //     NotificationApi.foregroundNotification();
-    //     super.initState();
-    //   }
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('Got a message whilst in the foreground!');
       print('Message data: ${message.data}');
@@ -70,12 +87,6 @@ class NotificationApi {
 
   /// Interacted with UI in [(Background or Terminated)] (when app is Closed)
   static Future<void> setupInteractedMessage() async {
-    /// in MyApp class
-    //  in initState() {
-    //     NotificationApi.setupInteractedMessage();
-    //     super.initState();
-    //   }
-    ///
     // Get any messages which caused the application to open from
     // a [(Terminated)] state.
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
