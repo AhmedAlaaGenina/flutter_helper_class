@@ -10,34 +10,35 @@ class NotificationApi {
 
   /// How to use it?
   /// in main()
-  // FirebaseMessaging.onBackgroundMessage(
-  // NotificationApi.firebaseMessagingBackgroundHandler);
-  //
-  /// Enabling foreground notifications for Android
-  /// by Creating A channel on Android devices
-  // await LocalNotificationApi.localNotifications
-  //     .resolvePlatformSpecificImplementation<
-  //     AndroidFlutterLocalNotificationsPlugin>()
-  //     ?.createNotificationChannel(
-  // LocalNotificationApi.androidNotificationChannel);
-  //
-  /// Enabling foreground notifications for IOS
-  // await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-  // alert: true,
-  // badge: true,
-  // sound: true,
-  // );
+  // await NotificationApi.init();
 
-  /// in MyApp class
-  // @override
-  // void initState() {
-  //   LocalNotificationApi.init();
-  //   NotificationApi.requestPermission();
-  //   NotificationApi.foregroundNotification();
-  //   NotificationApi.setupInteractedMessage();
-  //   super.initState();
-  // }
 
+  static Future<void> init() async {
+
+    // Enabling background Message
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // Enabling foreground notifications for Android
+    // by Creating A channel on Android devices
+    await LocalNotificationApi.localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(
+            LocalNotificationApi.androidNotificationChannel);
+
+    // Enabling foreground notifications for IOS
+    await firebaseMessaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+     LocalNotificationApi.init();
+     NotificationApi.requestPermission();
+     NotificationApi.foregroundNotification();
+     NotificationApi.setupInteractedMessage();
+    
+  }
   static void requestPermission() async {
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
