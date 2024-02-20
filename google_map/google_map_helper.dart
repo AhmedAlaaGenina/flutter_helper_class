@@ -1,23 +1,16 @@
 // flutter_polyline_points: ^1.0.0
 
 class GoogleMapHelper {
-  Future<List<LatLng>> getPolyPoints(
+  Future<Map<PolylineId, Polyline>> getPolyPoints(
       LatLng sourceLocation, LatLng destination) async {
     // how to use it
     // in google map widget
     // GoogleMap(
     // ...
-    //   polylines: {
-    //     Polyline(
-    //       polylineId: const PolylineId("route"),
-    //       points: polylineCoordinates,
-    //       color: const Color(0xFF7B61FF),
-    //       width: 6,
-    //     ),
-    //   },
+    // polylines: Set<Polyline>.of(polylines.values),
     // ),
 
-    List<LatLng> polylineCoordinates = [];
+   static List<LatLng> polylineCoordinates = [];
     PolylinePoints polylinePoints = PolylinePoints();
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
       google_api_key, // Your Google Map Key
@@ -30,6 +23,15 @@ class GoogleMapHelper {
             polylineCoordinates.add(LatLng(point.latitude, point.longitude)),
       );
     }
-    return polylineCoordinates;
+   return _addPolyLine(polylineCoordinates);
+  }
+
+ static Map<PolylineId, Polyline> _addPolyLine(List<LatLng> polylineCoordinates) {
+     Map<PolylineId, Polyline> polylines = {};
+    PolylineId id = PolylineId("poly");
+    Polyline polyline = Polyline(
+        polylineId: id, color: Colors.red, points: polylineCoordinates,);
+    polylines[id] = polyline;
+    return polylines;
   }
 }
