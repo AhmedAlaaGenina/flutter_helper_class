@@ -3,6 +3,20 @@
 class GoogleMapHelper {
   Future<List<LatLng>> getPolyPoints(
       LatLng sourceLocation, LatLng destination) async {
+    // how to use it
+    // in google map widget
+    // GoogleMap(
+    // ...
+    //   polylines: {
+    //     Polyline(
+    //       polylineId: const PolylineId("route"),
+    //       points: polylineCoordinates,
+    //       color: const Color(0xFF7B61FF),
+    //       width: 6,
+    //     ),
+    //   },
+    // ),
+
     List<LatLng> polylineCoordinates = [];
     PolylinePoints polylinePoints = PolylinePoints();
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
