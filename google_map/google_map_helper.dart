@@ -1,7 +1,7 @@
 // flutter_polyline_points: ^1.0.0
 
 class GoogleMapHelper {
-  Future<Map<PolylineId, Polyline>> getPolyPoints(
+  Future<Map<PolylineId, Polyline>> getPolyLine(
       LatLng sourceLocation, LatLng destination) async {
     // how to use it
     // in google map widget
