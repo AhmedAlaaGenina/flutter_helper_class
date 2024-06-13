@@ -1,0 +1,21 @@
+export 'package:fashion/modules/auth/presentation/screens/auth_screen.dart';
+export 'package:fashion/modules/bottom_navigation/bottom_navigation.dart';
+export 'package:fashion/modules/home/presentation/clothes_item_details_screen/screens/cliq_payment_screen.dart';
+export 'package:fashion/modules/home/presentation/clothes_item_details_screen/screens/clothes_item_details_screen.dart';
+export 'package:fashion/modules/home/presentation/favourite_screen/favourite_screen.dart';
+export 'package:fashion/modules/home/presentation/filter/screens/filter_screen.dart';
+export 'package:fashion/modules/home/presentation/home_screen/screens/home_screen.dart';
+export 'package:fashion/modules/my_closet/presentation/screens/add_item/add_item_screen.dart';
+export 'package:fashion/modules/my_closet/presentation/screens/add_item/taking_good_photos_screen.dart';
+export 'package:fashion/modules/my_closet/presentation/screens/my_closet_screen.dart';
+export 'package:fashion/modules/my_closet/presentation/screens/orders_screen.dart';
+export 'package:fashion/modules/my_closet/presentation/screens/requests_screen.dart';
+export 'package:fashion/modules/my_orders/presentation/screens/my_orders_screen.dart';
+export 'package:fashion/modules/profile/presentation/account_screen/screens/account_screen.dart';
+export 'package:fashion/modules/profile/presentation/preferences/screens/preferences_screen.dart';
+export 'package:fashion/modules/profile/presentation/profile_screen/screens/profile_screen.dart';
+export 'package:fashion/modules/profile/presentation/settings_screen/screens/settings_screen.dart';
+export 'package:fashion/modules/social/chat/chat.dart';
+
+export 'app_routes.dart';
+export 'route_configurations.dart';

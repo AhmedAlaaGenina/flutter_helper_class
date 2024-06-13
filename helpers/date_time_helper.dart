@@ -120,6 +120,13 @@ class DateTimeHelper {
     }
     return days;
   }
+  static int getDifferenceInDays(DateTime startDate, DateTime endDate) {
+    List<DateTime> days = [];
+    for (int i = 0; i <= endDate.difference(startDate).inDays; i++) {
+      days.add(startDate.add(Duration(days: i)));
+    }
+    return days.length;
+  }
 
   static String fromDateToDay(DateTime? dateTime) {
     if (dateTime == null) {

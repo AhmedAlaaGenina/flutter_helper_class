@@ -1,14 +1,21 @@
 import 'package:fashion/config/routes/routes.dart';
-import 'package:fashion/core/notification_manager/notification.dart';
+import 'package:fashion/core/notification_manager/notification_manager.dart';
+import 'package:fashion/core/util/util.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 
 class NotificationApi {
   static FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-  static Future<String?> getDeviceToken() async => await messaging.getToken();
+  static Future<String?> getDeviceToken() async {
+    try {
+      return await messaging.getToken();
+    } catch (e) {
+      ePrint('Error getting FCM token: $e');
+    }
+    return null;
+  }
 
   /// How to use it?
   /// in main()
@@ -16,17 +23,7 @@ class NotificationApi {
 
   static Future<void> init() async {
     // Enabling foreground notifications for Android
-    // by Creating A channel on Android devices
-    await LocalNotificationApi.localNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(
-            LocalNotificationApi.androidNotificationChannel);
-    LocalNotificationApi.localNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-
+    // is Done in local Notification class
     // Enabling foreground notifications for IOS
     await messaging.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -116,15 +113,24 @@ class NotificationApi {
 
     // if app in Background or Terminated that will work fine
     debugPrint("Opened Notification Data : ${message.data}");
+
     ///we can use normal navigatorKey.currentContext! to Do what we want
     if (RouteConfigurations.parentNavigatorKey.currentState != null) {
-      if (message.data[NotificationType.type] == NotificationType.newRequest) {
+      if (message.data[NotificationClickAction.clickAction] ==
+          NotificationClickAction.newRequest) {
         RouteConfigurations.parentNavigatorKey.currentState!.context
             .pushNamed(AppRoutes.requestsScreen, extra: true);
-      } else if (message.data[NotificationType.type] ==
-          NotificationType.orderAction) {
+      } else if (message.data[NotificationClickAction.clickAction] ==
+          NotificationClickAction.orderUserAction) {
         RouteConfigurations.router
             .goNamed(AppRoutes.myOrderScreen, extra: true);
+      } else if (message.data[NotificationClickAction.clickAction] ==
+          NotificationClickAction.orderDashboardAction) {
+        Map sendData = message.data[NotificationClickAction.sendData] as Map;
+        RouteConfigurations.router.goNamed(
+          AppRoutes.clothesItemScreen,
+          pathParameters: {'id': sendData['id']},
+        );
       }
     }
   }

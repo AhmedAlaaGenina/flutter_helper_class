@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-class CashHelper {
+
+class CacheHelper {
   static late SharedPreferences sharedPreferences;
 
   static Future<SharedPreferences> init() async {
@@ -24,7 +25,6 @@ class CashHelper {
     if (value is List<String>) {
       return await sharedPreferences.setStringList(key, value);
     }
-
     return false;
   }
 

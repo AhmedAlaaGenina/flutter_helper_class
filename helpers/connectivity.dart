@@ -1,9 +1,3 @@
-
-/// packages
-// connectivity_plus: ^6.0.1
-// internet_connection_checker_plus: ^2.3.0
-// open_settings: ^2.0.2
-// airplane_mode_checker: ^2.1.0
 import 'dart:async';
 
 import 'package:airplane_mode_checker/airplane_mode_checker.dart';

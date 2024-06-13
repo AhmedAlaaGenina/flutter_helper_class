@@ -501,15 +501,15 @@ extension StringExtensions on String {
         RegexPattern.ethereumAddress,
       );
 
-  bool isLanguagePersian() => RegVal.hasMatch(this, RegexPattern.persian);
-  bool isLanguageEnglish() => RegVal.hasMatch(this, RegexPattern.english);
-  bool isLanguageArabic() => RegVal.hasMatch(this, RegexPattern.arabic);
-  bool isLanguageChinese() => RegVal.hasMatch(this, RegexPattern.chinese);
-  bool isLanguageJapanese() => RegVal.hasMatch(this, RegexPattern.japanese);
-  bool isLanguageKorean() => RegVal.hasMatch(this, RegexPattern.korean);
-  bool isLanguageUkrainian() => RegVal.hasMatch(this, RegexPattern.ukrainian);
-  bool isLanguageRussian() => RegVal.hasMatch(this, RegexPattern.russian);
-  bool isLanguageItalian() => RegVal.hasMatch(this, RegexPattern.italian);
-  bool isLanguageFrench() => RegVal.hasMatch(this, RegexPattern.french);
-  bool isLanguageSpanish() => RegVal.hasMatch(this, RegexPattern.spanish);
+  bool isPersian() => RegVal.hasMatch(this, RegexPattern.persian);
+  bool isEnglish() => RegVal.hasMatch(this, RegexPattern.english);
+  bool isArabic() => RegVal.hasMatch(this, RegexPattern.arabic);
+  bool isChinese() => RegVal.hasMatch(this, RegexPattern.chinese);
+  bool isJapanese() => RegVal.hasMatch(this, RegexPattern.japanese);
+  bool isKorean() => RegVal.hasMatch(this, RegexPattern.korean);
+  bool isUkrainian() => RegVal.hasMatch(this, RegexPattern.ukrainian);
+  bool isRussian() => RegVal.hasMatch(this, RegexPattern.russian);
+  bool isItalian() => RegVal.hasMatch(this, RegexPattern.italian);
+  bool isFrench() => RegVal.hasMatch(this, RegexPattern.french);
+  bool isSpanish() => RegVal.hasMatch(this, RegexPattern.spanish);
 }
