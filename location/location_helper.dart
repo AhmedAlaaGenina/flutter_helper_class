@@ -25,7 +25,10 @@ class LocationHelper {
     PermissionStatus permissionGranted = await location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
+      if (permissionGranted == PermissionStatus.deniedForever) {
+        _showPermissionDialog();
+        return false;
+      } else if (permissionGranted != PermissionStatus.granted) {
         return false;
       }
     }
@@ -55,8 +58,28 @@ class LocationHelper {
     await location.enableBackgroundMode(enable: false);
   }
 
+  // Check if location service is enabled
+  static Future<bool> isLocationServiceEnabled() async {
+    return await location.serviceEnabled();
+  }
+
+  // Request location service
+  static Future<bool> requestLocationService() async {
+    return await location.requestService();
+  }
+
+  // Check location permission status
+  static Future<PermissionStatus> checkLocationPermission() async {
+    return await location.hasPermission();
+  }
+
+  // Request location permission
+  static Future<PermissionStatus> requestLocationPermission() async {
+    return await location.requestPermission();
+  }
+
   /// Retrieves address information from coordinates.
-  static Future<List<geo.Placemark>> getPlaceAddress({
+  static Future<List<geo.Placemark>> getFullPlaceAddress({
     required double latitude,
     required double longitude,
   }) async {
@@ -68,5 +91,49 @@ class LocationHelper {
     required String address,
   }) async {
     return await geo.locationFromAddress(address);
+  }
+
+  // Reverse geocode to get address from coordinates
+  static Future<String> getAddressFromCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async {
+    List<geo.Placemark> placemarks =
+        await geo.placemarkFromCoordinates(latitude, longitude);
+    if (placemarks.isNotEmpty) {
+      geo.Placemark place = placemarks[0];
+      return '${place.name}, ${place.locality}, ${place.administrativeArea}, ${place.country}';
+    }
+    return 'No address available';
+  }
+
+  // Show permission dialog
+  static void _showPermissionDialog() {
+    showDialog(
+      context: RouteConfigurations.parentNavigatorKey.currentState!.context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Permission Needed'),
+          content: const Text(
+            'This app needs location permission to function properly.\nPlease grant the permission.',
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                context.pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Open Settings'),
+              onPressed: () {
+                context.pop();
+                AppSettings.openAppSettings(type: AppSettingsType.location);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
