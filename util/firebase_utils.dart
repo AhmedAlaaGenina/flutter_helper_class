@@ -85,20 +85,25 @@ class FirebaseUtils {
     await FirebaseStorage.instance.refFromURL(url).delete();
   }
 
-  static Future<void> deleteFolderAndContents(String folderName) async {
+  static Future<void> deleteFolder(String folderPath) async {
     final Reference folderReference =
-        FirebaseStorage.instance.ref().child(folderName);
+        FirebaseStorage.instance.ref().child(folderPath);
 
-    try {
-      final result = await folderReference.listAll();
-      for (final item in result.items) {
-        await item.delete();
-      }
-      await folderReference.delete();
-      print('Folder deleted successfully');
-    } catch (e) {
-      print('Error deleting folder: $e');
+    // List all items (files and sub-folders) in the folder
+    final ListResult listResult = await folderReference.listAll();
+
+    // Recursively delete all files
+    for (final Reference fileRef in listResult.items) {
+      await fileRef.delete();
     }
+
+    // Recursively delete all sub-folders
+    for (final Reference subFolder in listResult.prefixes) {
+      await deleteFolder(subFolder.fullPath);
+    }
+
+    // Finally delete the folder itself if it's empty
+    await folderReference.delete();
   }
 }
 
