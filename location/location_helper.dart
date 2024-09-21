@@ -1,81 +1,128 @@
+import 'dart:math';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart' as geo;
-import 'package:location/location.dart';
-
-// const GOOGLE_API_KEY = 'AIzaSyCvrYkbhs9PAMtEAaTwnXrFtQaBz-GS60Q';
-const GOOGLE_API_KEY = 'AIzaSyBT30Wp2jPm5sw9DrP9qTge8SZgBsAO_wI';
+import 'package:permission_handler/permission_handler.dart' as ph;
+import 'package:shorebird_location/main.dart';
 
 class LocationHelper {
   LocationHelper._();
+  static const int _distanceFilter = 1; // in meters
+  static const Duration _updateInterval = Duration(seconds: 60);
+  // Stream controller for location updates
+  static Stream<Position>? _positionStream;
+  static Stream<Position>? get positionStream => _positionStream;
 
-  static Location location = Location();
-
-  static const double _distanceFilter = 1; // in meters
-  static const int _updateInterval = 10; // in seconds
+  static Future<bool> _requestLocationService() async {
+    var status = await Permission.locationWhenInUse.request();
+    return status == PermissionStatus.granted;
+  }
 
   /// Checks and requests location permissions if needed.
-  static Future<bool> checkLocationPermission() async {
-    bool serviceEnabled = await location.serviceEnabled();
+  static Future<bool> checkPermissions() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) {
-        return false;
-      }
+      serviceEnabled = await _requestLocationService();
+      if (!serviceEnabled) return false;
     }
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted == PermissionStatus.deniedForever) {
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
         _showPermissionDialog();
         return false;
-      } else if (permissionGranted != PermissionStatus.granted) {
-        return false;
       }
     }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showPermissionDialog();
+      return false;
+    }
+
     return true;
   }
 
-  /// Retrieves the current device location.
-  static Future<LocationData?> getCurrentLocation() async {
-    bool havePermission = await checkLocationPermission();
+  // Method to get current location
+  static Future<Position?> getCurrentLocation() async {
+    bool havePermission = await checkPermissions();
     if (!havePermission) return null;
-    return await location.getLocation();
+    return await Geolocator.getCurrentPosition();
   }
 
-  /// Starts listening for location updates.
+  // Method to start listening to location updates in foreground
   static Future<void> startListeningLocationChanged(
-      ValueChanged<LocationData> onChangeLocation) async {
-    bool havePermission = await checkLocationPermission();
+    ValueChanged<Position> onLocationUpdate,
+  ) async {
+    bool havePermission = await checkPermissions();
     if (!havePermission) return;
-    location.enableBackgroundMode(enable: true);
-    location.changeSettings(
-        interval: _updateInterval, distanceFilter: _distanceFilter);
-    location.onLocationChanged.listen(onChangeLocation);
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: _distanceFilter, // in meters
+      timeLimit: _updateInterval,
+    );
+
+    _positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings);
+    _positionStream?.listen(onLocationUpdate);
   }
 
-  /// Stops listening for location updates.
-  static Future<void> stopListeningLocation() async {
-    await location.enableBackgroundMode(enable: false);
+  // Method to stop listening to location updates
+  static void stopListeningLocation() {
+    _positionStream = null;
   }
 
-  // Check if location service is enabled
-  static Future<bool> isLocationServiceEnabled() async {
-    return await location.serviceEnabled();
+  // Method to calculate distance between two geocoordinates
+  static double calculateDistance({
+    required double startLatitude,
+    required double startLongitude,
+    required double endLatitude,
+    required double endLongitude,
+  }) {
+    return Geolocator.distanceBetween(
+      startLatitude,
+      startLongitude,
+      endLatitude,
+      endLongitude,
+    );
   }
 
-  // Request location service
-  static Future<bool> requestLocationService() async {
-    return await location.requestService();
+  // Method to calculate bearing between two geocoordinates
+  static double calculateBearing({
+    required double startLatitude,
+    required double startLongitude,
+    required double endLatitude,
+    required double endLongitude,
+  }) {
+    startLatitude = _degreesToRadians(startLatitude);
+    startLongitude = _degreesToRadians(startLongitude);
+    endLatitude = _degreesToRadians(endLatitude);
+    endLongitude = _degreesToRadians(endLongitude);
+
+    double dLong = endLongitude - startLongitude;
+
+    double y = sin(dLong) * cos(endLatitude);
+    double x = cos(startLatitude) * sin(endLatitude) -
+        sin(startLatitude) * cos(endLatitude) * cos(dLong);
+
+    double bearing = atan2(y, x);
+    bearing = _radiansToDegrees(bearing);
+    bearing = (bearing + 360) % 360;
+
+    return bearing;
   }
 
-  // Check location permission status
-  static Future<PermissionStatus> checkLocationPermission() async {
-    return await location.hasPermission();
+  // Helper method to convert degrees to radians
+  static double _degreesToRadians(double degrees) {
+    return degrees * pi / 180.0;
   }
 
-  // Request location permission
-  static Future<PermissionStatus> requestLocationPermission() async {
-    return await location.requestPermission();
+  // Helper method to convert radians to degrees
+  static double _radiansToDegrees(double radians) {
+    return radians * 180.0 / pi;
   }
 
   /// Retrieves address information from coordinates.
@@ -93,7 +140,7 @@ class LocationHelper {
     return await geo.locationFromAddress(address);
   }
 
-  // Reverse geocode to get address from coordinates
+  // Reverse geocoding: get address from coordinates
   static Future<String> getAddressFromCoordinates({
     required double latitude,
     required double longitude,
@@ -110,25 +157,25 @@ class LocationHelper {
   // Show permission dialog
   static void _showPermissionDialog() {
     showDialog(
-      context: RouteConfigurations.parentNavigatorKey.currentState!.context,
+      context: navigatorKey.currentState!.context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Location Permission Needed'),
           content: const Text(
-            'This app needs location permission to function properly.\nPlease grant the permission.',
+            'This app requires location permissions to function properly. Please grant the permission.',
           ),
           actions: [
             TextButton(
               child: const Text('Cancel'),
               onPressed: () {
-                context.pop();
+                Navigator.of(context).pop();
               },
             ),
             TextButton(
               child: const Text('Open Settings'),
               onPressed: () {
-                context.pop();
-                AppSettings.openAppSettings(type: AppSettingsType.location);
+                Navigator.of(context).pop();
+                Geolocator.openAppSettings();
               },
             ),
           ],
