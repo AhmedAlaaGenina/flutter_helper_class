@@ -5,9 +5,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart' as geo;
-import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shorebird_location/main.dart';
 
+// handle foreground
 class LocationHelper {
   LocationHelper._();
   static const int _distanceFilter = 1; // in meters
@@ -61,7 +61,7 @@ class LocationHelper {
     if (!havePermission) return;
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: _distanceFilter, // in meters
+      distanceFilter: _distanceFilter, 
       timeLimit: _updateInterval,
     );
 

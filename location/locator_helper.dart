@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shorebird_location/file_manager.dart';
 
-// this class handles the location tracking in background
+// this class handles the location in background
 class LocationService {
   // Private constructor to prevent instantiation and enforce singleton pattern.
   LocationService._();
