@@ -1,3 +1,8 @@
+
+//  youtube_explode_dart: ^2.2.2
+//  chewie: ^1.8.5
+//  video_player: ^2.9.1
+
 import 'dart:async';
 import 'dart:developer';
 
@@ -5,7 +10,6 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// Represents the current status of the YPlayer.
 enum YPlayerStatus { initial, loading, playing, paused, stopped, error }
