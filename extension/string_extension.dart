@@ -12,3 +12,9 @@ extension ValidatedString on String? {
     return this != null;
   }
 }
+
+extension StringExtensions on String {
+  String removeWhitespace() {
+    return this.replaceAll(' ', '');
+  }
+}
