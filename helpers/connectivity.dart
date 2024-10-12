@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:airplane_mode_checker/airplane_mode_checker.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:fashion/config/routes/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
-import 'package:open_settings/open_settings.dart';
+import 'package:mobile_developer_test/config/routes/routes.dart';
+import 'package:open_settings_plus/open_settings_plus.dart';
 
 class ConnectivityChecker {
   factory ConnectivityChecker() => _instance;
@@ -77,15 +76,16 @@ class ConnectivityChecker {
   void closeSnackBarDialogs() {
     ScaffoldMessenger.of(key.currentContext!).hideCurrentSnackBar();
     if (_connectivityDialogContext != null && isDialogOpen) {
-      _connectivityDialogContext!.pop();
-      // Navigator.of(_connectivityDialogContext!).pop();
+      // _connectivityDialogContext!.pop();
+      Navigator.of(_connectivityDialogContext!).pop();
       isDialogOpen = false;
     }
   }
 
   Future<void> showConnectivityDialog() async {
     if (key.currentContext == null) return;
-    final airplaneModeStatus = await AirplaneModeChecker.checkAirplaneMode();
+    final airplaneModeStatus =
+        await AirplaneModeChecker.instance.checkAirplaneMode();
     await showDialog(
         context: key.currentContext!,
         barrierDismissible: false,
@@ -99,20 +99,41 @@ class ConnectivityChecker {
               TextButton(
                 child: const Text("Wifi"),
                 onPressed: () {
-                  OpenSettings.openWIFISetting();
+                  switch (OpenSettingsPlus.shared) {
+                    case OpenSettingsPlusAndroid settings:
+                      settings.wifi();
+                    case OpenSettingsPlusIOS settings:
+                      settings.wifi();
+                    default:
+                      throw Exception('Platform not supported');
+                  }
                 },
               ),
               TextButton(
                 child: const Text("Mobile Data"),
                 onPressed: () {
-                  OpenSettings.openDataUsageSetting();
+                  switch (OpenSettingsPlus.shared) {
+                    case OpenSettingsPlusAndroid settings:
+                      settings.dataUsage();
+                    case OpenSettingsPlusIOS settings:
+                      settings.cellular();
+                    default:
+                      throw Exception('Platform not supported');
+                  }
                 },
               ),
               if (airplaneModeStatus == AirplaneModeStatus.on)
                 TextButton(
                   child: const Text("Disable Airplane"),
                   onPressed: () {
-                    OpenSettings.openAirplaneModeSetting();
+                    switch (OpenSettingsPlus.shared) {
+                      case OpenSettingsPlusAndroid settings:
+                        settings.airplaneMode();
+                      case OpenSettingsPlusIOS settings:
+                        settings.cellular();
+                      default:
+                        throw Exception('Platform not supported');
+                    }
                   },
                 ),
             ],

@@ -5,28 +5,38 @@ import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 class ApiService {
-  static final ApiService _instance = ApiService._internal();
-  factory ApiService() => _instance;
-
-  late Dio _dio;
-
-  ApiService._internal() {
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: 'https://api.example.com', // Replace with your API base URL
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+  final Dio _dio;
+  final int defaultMaxRetries;
+  final Duration defaultRetryDelay;
+  ApiService(
+    this._dio, {
+    this.defaultMaxRetries = 3,
+    this.defaultRetryDelay = const Duration(seconds: 1),
+  }) {
+    _dio.interceptors.addAll([
+      PrettyDioLogger(),
+      RetryInterceptor(
+        dio: _dio,
+        maxRetries: defaultMaxRetries,
+        initialDelay: defaultRetryDelay,
       ),
-    )..interceptors.addAll([
-        PrettyDioLogger(),
-        RetryInterceptor(),
-      ]);
+    ]);
   }
+
+//  getIt.registerLazySingleton<Dio>(
+//     () => Dio(
+//       BaseOptions(
+//         baseUrl: ApiConstant.baseUrl,
+//         connectTimeout: const Duration(seconds: 30),
+//         receiveTimeout: const Duration(seconds: 30),
+//         sendTimeout: const Duration(seconds: 30),
+//         headers: {
+//           'Accept': 'application/json',
+//           'Content-Type': 'application/json',
+//         },
+//       ),
+//     ),
+//   );
 
   //? How to cancel request
   // CancelToken? _uploadCancelToken = CancelToken();
@@ -42,7 +52,9 @@ class ApiService {
     Options? options,
     CancelToken? cancelToken,
     void Function(int, int)? onReceiveProgress,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.get<T>(
       path,
       queryParameters: queryParameters,
@@ -62,7 +74,9 @@ class ApiService {
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.post<T>(
       path,
       data: data,
@@ -84,7 +98,9 @@ class ApiService {
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.put<T>(
       path,
       data: data,
@@ -104,7 +120,9 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.delete<T>(
       path,
       data: data,
@@ -124,7 +142,9 @@ class ApiService {
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.patch<T>(
       path,
       data: data,
@@ -144,7 +164,9 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.head<T>(
       path,
       data: data,
@@ -155,6 +177,22 @@ class ApiService {
     return response;
   }
 
+  // Example of file download
+  // try {
+  //   await apiService.download(
+  //     'https://example.com/files/document.pdf',
+  //     '/path/to/save/document.pdf',
+  //     onReceiveProgress: (received, total) {
+  //       if (total != -1) {
+  //         final progress = (received / total * 100).toStringAsFixed(0);
+  //         print('Download progress: $progress%');
+  //       }
+  //     },
+  //   );
+  //   print('File downloaded successfully');
+  // } catch (e) {
+  //   print('Error downloading file: $e');
+  // }
   // Download file
   Future<Response> download(
     String urlPath,
@@ -166,7 +204,9 @@ class ApiService {
     String lengthHeader = Headers.contentLengthHeader,
     dynamic data,
     Options? options,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
     final response = await _dio.download(
       urlPath,
       savePath,
@@ -181,6 +221,22 @@ class ApiService {
     return response;
   }
 
+  // Example of multipart request for file upload
+  // try {
+  //   final response = await apiService.multipartRequest<Map<String, dynamic>>(
+  //     '/upload',
+  //     'POST',
+  //     files: {'file': '/path/to/local/file.pdf'},
+  //     data: {'description': 'My uploaded file'},
+  //     onSendProgress: (sent, total) {
+  //       final progress = (sent / total * 100).toStringAsFixed(0);
+  //       print('Upload progress: $progress%');
+  //     },
+  //   );
+  //   print('File uploaded successfully: ${response.data}');
+  // } catch (e) {
+  //   print('Error uploading file: $e');
+  // }
   // Multipart request helper
   Future<Response<T>> multipartRequest<T>(
     String path,
@@ -192,7 +248,10 @@ class ApiService {
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
+    RetryOptions? retryOptions,
   }) async {
+    options = _mergeRetryOptions(options, retryOptions);
+
     final formData = FormData.fromMap({
       if (data != null) ...data,
       for (var entry in files.entries)
@@ -203,13 +262,31 @@ class ApiService {
       path,
       data: formData,
       queryParameters: queryParameters,
-      options: options?.copyWith(method: method) ?? Options(method: method),
+      options: options.copyWith(method: method),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
     );
     return response;
   }
+
+  // Helper method to merge retry options
+  Options _mergeRetryOptions(Options? options, RetryOptions? retryOptions) {
+    final mergedOptions = options ?? Options();
+    mergedOptions.extra ??= {};
+
+    if (retryOptions != null) {
+      mergedOptions.extra!['maxRetries'] = retryOptions.maxRetries;
+      mergedOptions.extra!['retryDelay'] = retryOptions.retryDelay;
+    } else if (!mergedOptions.extra!.containsKey('maxRetries')) {
+      // Use default values if not specified
+      mergedOptions.extra!['maxRetries'] = defaultMaxRetries;
+      mergedOptions.extra!['retryDelay'] = defaultRetryDelay;
+    }
+
+    return mergedOptions;
+  }
+
   //? Here's how to use each approach:
   //! 1. Automatic Retry (via Interceptor)
   // This happens automatically for all requests:
@@ -310,17 +387,27 @@ class ApiService {
         (error.response?.statusCode != null &&
             error.response!.statusCode! >= 500);
   }
+}
 
-  Dio get dio => _dio;
+class RetryOptions {
+  final int maxRetries;
+  final Duration retryDelay;
+
+  RetryOptions({
+    required this.maxRetries,
+    required this.retryDelay,
+  });
 }
 
 class RetryInterceptor extends Interceptor {
+  final Dio dio;
   final int maxRetries;
   final Duration initialDelay;
   final Duration maxDelay;
   final bool shouldRetryOnTimeout;
 
   RetryInterceptor({
+    required this.dio,
     this.maxRetries = 3,
     this.initialDelay = const Duration(seconds: 1),
     this.maxDelay = const Duration(seconds: 30),
@@ -332,9 +419,10 @@ class RetryInterceptor extends Interceptor {
       DioException err, ErrorInterceptorHandler handler) async {
     final extraMap = err.requestOptions.extra;
     final retryCount = extraMap['retryCount'] ?? 0;
-
+    final maxRetries = extraMap['maxRetries'] ?? this.maxRetries;
+    final retryDelay = extraMap['retryDelay'] ?? initialDelay;
     if (shouldRetry(err) && retryCount < maxRetries) {
-      final delay = _calculateDelay(retryCount);
+      final delay = _calculateDelay(retryCount, retryDelay);
       extraMap['retryCount'] = retryCount + 1;
 
       await Future.delayed(delay);
@@ -346,7 +434,6 @@ class RetryInterceptor extends Interceptor {
           extra: extraMap,
         );
 
-        final dio = ApiService().dio;
         final response = await dio.request(
           err.requestOptions.path,
           data: err.requestOptions.data,
@@ -364,8 +451,8 @@ class RetryInterceptor extends Interceptor {
   }
 
   bool shouldRetry(DioException err) {
-    return err.type == DioExceptionType.connectionTimeout ||
-        err.type == DioExceptionType.receiveTimeout ||
+    // err.type == DioExceptionType.connectionTimeout ||
+    return err.type == DioExceptionType.receiveTimeout ||
         (err.error is SocketException) ||
         (err.response?.statusCode != null &&
             err.response!.statusCode! >= 500) ||
@@ -373,9 +460,9 @@ class RetryInterceptor extends Interceptor {
             err.type == DioExceptionType.connectionTimeout);
   }
 
-  Duration _calculateDelay(int retryCount) {
+  Duration _calculateDelay(int retryCount, Duration baseDelay) {
     // Exponential backoff with jitter
-    final exponentialDelay = initialDelay * (pow(2, retryCount) as int);
+    final exponentialDelay = baseDelay * (pow(2, retryCount) as int);
     final withJitter = exponentialDelay * (0.5 + Random().nextDouble() / 2);
     return Duration(
         milliseconds: min(withJitter.inMilliseconds, maxDelay.inMilliseconds));

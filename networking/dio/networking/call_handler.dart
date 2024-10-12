@@ -2,28 +2,15 @@ import 'dart:async';
 
 import 'package:mobile_developer_test/core/helpers/networking/networking.dart';
 
-abstract class CallHandler {
-  static Future<Result<T>> call<T>(
-    Future<T> Function() call, {
-    required bool isLocal,
-  }) async {
+ class CallerDataHandler {
+  static Future<Result<T>> call<T>(Future<T> Function() call) async {
     try {
       final res = await call();
       return Result.success(res);
     } catch (e) {
-      return Result.error(ExceptionHandler.handle(e, isLocal: isLocal));
+      return Result.failure(FailureHandler.handle(e));
     }
   }
 }
 
-class ApiCallHandler extends CallHandler {
-  static Future<Result<T>> call<T>(Future<T> Function() call) {
-    return CallHandler.call(call, isLocal: false);
-  }
-}
 
-class LocalCallHandler extends CallHandler {
-  static Future<Result<T>> call<T>(Future<T> Function() call) {
-    return CallHandler.call(call, isLocal: true);
-  }
-}

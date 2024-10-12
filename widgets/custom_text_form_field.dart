@@ -1,8 +1,8 @@
-import 'package:fashion/config/theme/theme.dart';
-import 'package:fashion/core/extension/extension.dart';
-import 'package:fashion/core/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_developer_test/config/theme/theme.dart';
+import 'package:mobile_developer_test/core/extension/extension.dart';
+import 'package:mobile_developer_test/core/widgets/widgets.dart';
 
 class CustomTextFormField extends StatefulWidget {
   const CustomTextFormField({
@@ -278,8 +278,7 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
                           : OutlineInputBorder(
                               borderRadius: BorderRadius.all(
                                   Radius.circular(widget.radius)),
-                              borderSide:
-                                   BorderSide(color: AppColors.primary),
+                              borderSide: BorderSide(color: AppColors.primary),
                             ),
                       enabledBorder: !widget.haveBorder
                           ? InputBorder.none
@@ -328,9 +327,9 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
                                   .toLowerCase()
                                   .contains('password') ||
                               widget.isSecured) &&
-                          (value.length < 6)) {
+                          (value.isPasswordEasy())) {
                         return widget.errorMessage ??
-                            "Password not valid at least 6 characters";
+                            "Password not valid at least 8 characters, 1 letter and 1 number and no space";
                       }
                       if (widget.validateText.toLowerCase().contains("name") &&
                           (!value.isFullNameEn())) {

@@ -1,9 +1,9 @@
-import 'package:fashion/config/theme/theme.dart';
-import 'package:fashion/core/widgets/shadow_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:mobile_developer_test/config/theme/theme.dart';
+import 'package:mobile_developer_test/core/widgets/widgets.dart';
 
 class CustomButton extends StatelessWidget {
   const CustomButton({
@@ -130,6 +130,7 @@ class CustomButtonText extends StatelessWidget {
     this.haveFullWidth = true,
     this.loading = false,
     this.fitHeight = false,
+    this.isExpandText = false,
   });
 
   final String title;
@@ -154,6 +155,7 @@ class CustomButtonText extends StatelessWidget {
   final bool haveFullWidth;
   final bool loading;
   final bool fitHeight;
+  final bool isExpandText;
 
   @override
   Widget build(BuildContext context) {
@@ -177,15 +179,28 @@ class CustomButtonText extends StatelessWidget {
         mainAxisAlignment: mainAxisAlignment,
         mainAxisSize: haveFullWidth ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                  color: textColor ??
-                      (inverseColor ? AppColors.primary : Colors.white),
-                  fontSize: fontSize,
-                  fontWeight: fontWeight,
+          isExpandText
+              ? Expanded(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                          color: textColor ??
+                              (inverseColor ? AppColors.primary : Colors.white),
+                          fontSize: fontSize,
+                          fontWeight: fontWeight,
+                        ),
+                  ),
+                )
+              : Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        color: textColor ??
+                            (inverseColor ? AppColors.primary : Colors.white),
+                        fontSize: fontSize,
+                        fontWeight: fontWeight,
+                      ),
                 ),
-          ),
         ],
       ),
     );
