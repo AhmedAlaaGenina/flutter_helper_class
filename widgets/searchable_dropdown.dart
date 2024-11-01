@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class SearchableDropdown<T> extends StatefulWidget {
   final String hint;
   final List<T> items;
-  final Function(List<T>) onSearch;
+  final Function(List<T>)? onSearchResult;
   final Function() onNotFound;
   final Function(T) onSelected;
   final String Function(T) getLabel;
@@ -13,11 +13,11 @@ class SearchableDropdown<T> extends StatefulWidget {
     super.key,
     required this.hint,
     required this.items,
-    required this.onSearch,
     required this.onNotFound,
     required this.onSelected,
     required this.getLabel,
     required this.searchableFunction,
+    this.onSearchResult,
     this.controller,
   });
 
@@ -141,7 +141,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
         _filteredItems = widget.searchableFunction(value);
       },
     );
-    widget.onSearch(_filteredItems);
+    if (widget.onSearchResult != null) widget.onSearchResult!(_filteredItems);
 
     if (_isOpen) {
       _overlayEntry?.markNeedsBuild();
