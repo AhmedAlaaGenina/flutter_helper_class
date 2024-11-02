@@ -4,7 +4,7 @@ class SearchableDropdown<T> extends StatefulWidget {
   final String hint;
   final List<T> items;
   final Function(List<T>)? onSearchResult;
-  final Function() onNotFound;
+  final Function()? onNotFound;
   final Function(T) onSelected;
   final String Function(T) getLabel;
   final TextEditingController? controller;
@@ -13,10 +13,10 @@ class SearchableDropdown<T> extends StatefulWidget {
     super.key,
     required this.hint,
     required this.items,
-    required this.onNotFound,
     required this.onSelected,
     required this.getLabel,
     required this.searchableFunction,
+    this.onNotFound,
     this.onSearchResult,
     this.controller,
   });
@@ -110,13 +110,15 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                     if (_filteredItems.isEmpty) ...[
                       ListTile(
                         title: const Text('No items found'),
-                        trailing: TextButton(
-                          onPressed: () {
-                            _closeDropdown();
-                            widget.onNotFound();
-                          },
-                          child: const Text('Add New'),
-                        ),
+                        trailing: widget.onNotFound != null
+                            ? TextButton(
+                                onPressed: () {
+                                  _closeDropdown();
+                                  widget.onNotFound!();
+                                },
+                                child: const Text('Add New'),
+                              )
+                            : null,
                       ),
                     ] else
                       ..._filteredItems.map(
