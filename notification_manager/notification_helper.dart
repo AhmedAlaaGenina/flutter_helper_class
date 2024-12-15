@@ -6,6 +6,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 // NOTE: Import the following packages for platform-specific implementations
 // NOTE: This Will replacement for LocalNotificationApi But Wait For The Nxt Use Of It
+// NOTE: for More Details of use this package see https://github.com/MaikuB/flutter_local_notifications/blob/master/flutter_local_notifications/example/lib/main.dart#L347
 
 /// A comprehensive helper class to handle local notifications in Flutter applications.
 /// This class provides methods to initialize, schedule, and manage notifications across
@@ -27,12 +28,22 @@ class NotificationHelper {
     playSound: true,
     enableVibration: true,
   );
+  Future<void> _configureLocalTimeZone() async {
+    if (kIsWeb || Platform.isLinux) {
+      return;
+    }
+    tz.initializeTimeZones();
+    if (Platform.isWindows) {
+      return;
+    }
+    final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName!));
+  }
 
   /// Initialize notification settings for all platforms
   Future<void> initialize() async {
     // Initialize timezone
-    tz.initializeTimeZones();
-
+    await _configureLocalTimeZone();
     // Platform-specific initialization settings
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
