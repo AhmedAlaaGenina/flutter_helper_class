@@ -1,154 +1,225 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:scio_phile/start/my_app.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 class ShorebirdUpdateManager {
-  ShorebirdUpdateManager._();
+  static final ShorebirdUpdateManager _instance =
+      ShorebirdUpdateManager._internal();
+  factory ShorebirdUpdateManager() => _instance;
+  ShorebirdUpdateManager._internal();
 
-  // Singleton instance
-  static final ShorebirdCodePush _shorebirdCodePush = ShorebirdCodePush();
+  // Private static fields
+  static ShorebirdUpdater? _updater;
+  static bool _isCheckingForUpdates = false;
+  static bool _isRestartBannerUI = true;
+  static UpdateTrack _currentTrack = UpdateTrack.stable;
+
+  // Getters
+  static ShorebirdUpdater get updater {
+    _updater ??= ShorebirdUpdater();
+    return _updater!;
+  }
+
+  static bool get isCheckingForUpdates => _isCheckingForUpdates;
+  static UpdateTrack get currentTrack => _currentTrack;
+
+  /// Initialize the updater and verify availability
+  static void initialize(bool isRestartBannerUI) {
+    _updater = ShorebirdUpdater();
+    _isRestartBannerUI = isRestartBannerUI;
+    if (!isShorebirdAvailable()) {
+      log('Shorebird is not available');
+    }
+  }
 
   /// Check if Shorebird is available
-  static bool isShorebirdAvailable() {
-    try {
-      return _shorebirdCodePush.isShorebirdAvailable();
-    } catch (e) {
-      debugPrint('Error checking Shorebird availability: $e');
-      return false;
-    }
+  static bool isShorebirdAvailable() => _updater?.isAvailable ?? false;
+
+  /// Set the update track (stable, beta, staging)
+  static void setTrack(UpdateTrack track) {
+    _currentTrack = track;
   }
 
-  /// Check if an update is available
-  static Future<bool> isUpdateAvailable() async {
+  /// Read the current patch (if there is one.)
+  /// `currentPatch` will be `null` if no patch is installed.
+  static Future<Patch?> getCurrentPatch() async {
     try {
-      return await _shorebirdCodePush.isNewPatchAvailableForDownload();
+      if (!isShorebirdAvailable()) return null;
+      return await _updater?.readCurrentPatch();
     } catch (e) {
-      debugPrint('Error checking for updates: $e');
-      return false;
-    }
-  }
-
-  /// Download the update if available
-  static Future<bool> downloadUpdate() async {
-    try {
-      await _shorebirdCodePush.downloadUpdateIfAvailable();
-      return true;
-    } catch (e) {
-      debugPrint('Error downloading update: $e');
-      return false;
-    }
-  }
-
-  /// Get the current patch number
-  static Future<int?> getCurrentPatchNumber() async {
-    try {
-      return await _shorebirdCodePush.currentPatchNumber();
-    } catch (e) {
-      debugPrint('Error retrieving current patch number: $e');
+      log('Error reading current patch: $e');
       return null;
     }
   }
 
-  /// Check for an update, download if available, and prompt user to restart
-  static Future<void> checkForUpdatesAndApply(BuildContext context) async {
-    if (!(isShorebirdAvailable() &&
-        await isUpdateAvailable() &&
-        context.mounted)) return;
+  /// Check for updates and handle the update process
+  static Future<void> checkForUpdate({
+    bool autoDownload = true,
+    bool isBanner = true,
+    VoidCallback? onUpdateAvailable,
+    VoidCallback? onNoUpdateAvailable,
+    Function(String)? onError,
+  }) async {
+    if (!isShorebirdAvailable() || _isCheckingForUpdates) return;
 
-    bool isUserWillingToUpdate = await _promptUserToUpdate(context) ?? false;
-    if (!isUserWillingToUpdate) return;
+    try {
+      _isCheckingForUpdates = true;
+      final status = await _updater!.checkForUpdate(track: _currentTrack);
 
-    bool downloadSuccessful = await downloadUpdate();
-    if (!(downloadSuccessful && context.mounted)) return;
-
-    _promptUserToRestart(context);
+      switch (status) {
+        case UpdateStatus.upToDate:
+          _noUpdateAvailable();
+          onNoUpdateAvailable?.call();
+        case UpdateStatus.outdated:
+          onUpdateAvailable?.call();
+          if (autoDownload) {
+            await _updateAvailable();
+          } else {
+            _showUpdateAvailableBanner();
+          }
+        case UpdateStatus.restartRequired:
+          _showRestartUI();
+        case UpdateStatus.unavailable:
+          log('Updates unavailable');
+      }
+    } catch (error) {
+      log('Error checking for update: $error');
+      onError?.call(error.toString());
+    } finally {
+      _isCheckingForUpdates = false;
+    }
   }
 
-  /// Prompt the user to restart the app after a successful update download
-  static void _promptUserToRestart(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Update Ready'),
-          content: const Text(
-              'An update has been downloaded. Please restart the app to apply the changes.'),
-          actions: [
-            TextButton(
-              child: const Text('Later'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              onPressed: () => RestartWidget.restartApp(context),
-              child: const Text('Restart Now'),
-            ),
-          ],
-        );
-      },
+  static void _noUpdateAvailable() {
+    log('No update available.');
+  }
+
+  static Future<void> _updateAvailable() async {
+    await _downloadUpdate();
+    _showRestartUI();
+  }
+
+  static Future<void> _downloadUpdate() async {
+    try {
+      await _updater!.update(track: _currentTrack);
+    } on UpdateException catch (error) {
+      _showErrorBanner(error.message);
+    }
+  }
+
+  static void _showUpdateAvailableBanner() {
+    _showBanner(
+      content: Text('New update available on ${_currentTrack.name} track'),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            _hideBanner();
+            _showDownloadingBanner();
+            await _downloadUpdate();
+            _hideBanner();
+            _showRestartUI();
+          },
+          child: const Text('Download'),
+        ),
+        TextButton(
+          onPressed: _hideBanner,
+          child: const Text('Later'),
+        ),
+      ],
     );
   }
 
-  /// Prompt the user to confirm if they want to download and apply the update
-  static Future<bool?> _promptUserToUpdate(BuildContext context) async {
-    return await showDialog<bool>(
-      context: context,
+  static void _showDownloadingBanner() {
+    _showBanner(
+      content: const Text('Downloading update...'),
+      actions: const [
+        SizedBox(
+          height: 14,
+          width: 14,
+          child: CircularProgressIndicator(),
+        ),
+      ],
+    );
+  }
+
+  static void _showErrorBanner(Object error) {
+    _showBanner(
+      content: Text('Error downloading update: $error'),
+      actions: [
+        TextButton(
+          onPressed: _hideBanner,
+          child: const Text('Dismiss'),
+        ),
+      ],
+    );
+  }
+
+  static void _showRestartUI() {
+    _isRestartBannerUI ? _showRestartBanner() : _promptUserToRestart();
+  }
+
+  static void _showRestartBanner() {
+    _showBanner(
+      content: const Text('Update ready! Please restart your app.'),
+      actions: [
+        TextButton(
+          onPressed: () {},
+          child: const Text('Restart Now'),
+        ),
+        TextButton(
+          onPressed: _hideBanner,
+          child: const Text('Later'),
+        ),
+      ],
+    );
+  }
+
+  static void _promptUserToRestart() {
+    showDialog(
+      context: navigatorKey.currentState!.context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Update Available'),
-          content: const Text(
-              'A new update is available. Would you like to update now?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Later'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Update Now'),
-            ),
-          ],
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Update Ready'),
+            content: const Text(
+                'An update has been downloaded. Restart now to apply the changes?'),
+            actions: [
+              TextButton(
+                child: const Text('Later'),
+                onPressed: () =>
+                    Navigator.of(navigatorKey.currentState!.context).pop(),
+              ),
+              TextButton(
+                onPressed: () {},
+                child: const Text('Restart Now'),
+              ),
+            ],
+          ),
         );
       },
     );
   }
-}
 
-// void main() {
-//   runApp(
-//     RestartWidget(
-//       child: MaterialApp(),
-//     ),
-//   );
-// }
-class RestartWidget extends StatefulWidget {
-  const RestartWidget({super.key, required this.child});
-
-  final Widget child;
-
-  static void restartApp(BuildContext context) {
-    context.findAncestorStateOfType<_RestartWidgetState>()!.restartApp();
+  static void _showBanner({
+    required Widget content,
+    required List<Widget> actions,
+  }) {
+    ScaffoldMessenger.of(navigatorKey.currentState!.context)
+      ..hideCurrentMaterialBanner()
+      ..showMaterialBanner(
+        MaterialBanner(
+          content: content,
+          actions: actions,
+        ),
+      );
   }
 
-  @override
-  State<RestartWidget> createState() => _RestartWidgetState();
-}
-
-class _RestartWidgetState extends State<RestartWidget> {
-  Key key = UniqueKey();
-
-  void restartApp() {
-    setState(() {
-      key = UniqueKey();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: key,
-      child: widget.child,
-    );
+  static void _hideBanner() {
+    ScaffoldMessenger.of(navigatorKey.currentState!.context)
+        .hideCurrentMaterialBanner();
   }
 }

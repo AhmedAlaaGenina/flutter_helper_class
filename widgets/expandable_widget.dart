@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+//? to control the expandable widget from outside
 // // First, create a global key
 // final GlobalKey<_ExpandableWidgetState> expandableKey = GlobalKey<_ExpandableWidgetState>();
 
