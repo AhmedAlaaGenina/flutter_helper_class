@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:restart_app/restart_app.dart';
 import 'package:scio_phile/start/my_app.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
@@ -26,7 +27,7 @@ class ShorebirdUpdateManager {
   static UpdateTrack get currentTrack => _currentTrack;
 
   /// Initialize the updater and verify availability
-  static void initialize(bool isRestartBannerUI) {
+  static void initialize({bool isRestartBannerUI = true}) {
     _updater = ShorebirdUpdater();
     _isRestartBannerUI = isRestartBannerUI;
     if (!isShorebirdAvailable()) {
@@ -57,7 +58,6 @@ class ShorebirdUpdateManager {
   /// Check for updates and handle the update process
   static Future<void> checkForUpdate({
     bool autoDownload = true,
-    bool isBanner = true,
     VoidCallback? onUpdateAvailable,
     VoidCallback? onNoUpdateAvailable,
     Function(String)? onError,
@@ -165,7 +165,7 @@ class ShorebirdUpdateManager {
       content: const Text('Update ready! Please restart your app.'),
       actions: [
         TextButton(
-          onPressed: () {},
+          onPressed: () => Restart.restartApp(),
           child: const Text('Restart Now'),
         ),
         TextButton(
@@ -186,15 +186,15 @@ class ShorebirdUpdateManager {
           child: AlertDialog(
             title: const Text('Update Ready'),
             content: const Text(
-                'An update has been downloaded. Restart now to apply the changes?'),
+                'An update has been downloaded. Restart now to apply the changes!'),
             actions: [
+              // TextButton(
+              //   child: const Text('Later'),
+              //   onPressed: () =>
+              //       Navigator.of(navigatorKey.currentState!.context).pop(),
+              // ),
               TextButton(
-                child: const Text('Later'),
-                onPressed: () =>
-                    Navigator.of(navigatorKey.currentState!.context).pop(),
-              ),
-              TextButton(
-                onPressed: () {},
+                onPressed: () => Restart.restartApp(),
                 child: const Text('Restart Now'),
               ),
             ],
