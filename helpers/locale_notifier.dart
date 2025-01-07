@@ -35,3 +35,47 @@ class LocaleNotifier extends Notifier<Locale> {
     state = Locale(Intl.systemLocale.split("_")[0]);
   }
 }
+
+// provider
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:scio_phile/constants/app_names.dart';
+import 'package:scio_phile/generated/l10n.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class LocaleProvider extends ChangeNotifier {
+  final SharedPreferences _prefs;
+  late Locale _currentLocale;
+
+  LocaleProvider(this._prefs) {
+    // Initialize locale from SharedPreferences or system locale
+    final savedLocale = _prefs.getString(AppNames.locale);
+    _currentLocale = Locale(savedLocale ?? Intl.systemLocale.split("_")[0]);
+
+    // Load the locale if it's supported
+    if (S.delegate.supportedLocales.contains(_currentLocale)) {
+      S.load(_currentLocale);
+    }
+  }
+
+  Locale get locale => _currentLocale;
+
+  Future<void> setLocale(String localeName) async {
+    Locale newLocale = Locale(localeName);
+    if (!S.delegate.supportedLocales.contains(newLocale)) return;
+
+    _currentLocale = newLocale;
+    await S.load(newLocale);
+    await _prefs.setString(AppNames.locale, localeName);
+    notifyListeners();
+  }
+
+  bool isArabic() =>
+      (_prefs.getString(AppNames.locale) ?? Intl.getCurrentLocale()) == "ar";
+
+  Future<void> clearLocale() async {
+    await _prefs.remove(AppNames.locale);
+    _currentLocale = Locale(Intl.systemLocale.split("_")[0]);
+    notifyListeners();
+  }
+}
