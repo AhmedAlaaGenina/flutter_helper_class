@@ -154,8 +154,6 @@ class NotificationHelper {
       tz.TZDateTime.from(scheduledDate, tz.local),
       _notificationDetails(),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
   }
