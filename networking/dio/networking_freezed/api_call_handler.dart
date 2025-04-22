@@ -1,7 +1,4 @@
-import 'package:dartz/dartz.dart';
-import 'package:hr_app/core/network/network.dart';
-
-typedef Result<T> = Either<Failure, T>;
+import 'package:infinite_scroll_pagination_package/networking/dio/networking_freezed/networking_freezed.dart';
 
 class ApiCallHandler {
   static Future<Result<T>> handle<T>(
@@ -14,12 +11,12 @@ class ApiCallHandler {
       if (result is Map<String, dynamic> && result['statusCode'] == -100) {
         final message =
             result['message'] ?? "Something went wrong. Please try again.";
-        throw CustomStatusException(message);
+        throw CustomException(message: message);
       }
-      return Right(result);
+      return Result.success(result);
     } catch (error) {
       final failure = ApiFailureHandler.handle(error);
-      return Left(failure);
+      return Result.failure(failure);
     }
   }
 }

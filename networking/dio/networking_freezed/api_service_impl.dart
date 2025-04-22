@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:infinite_scroll_pagination_package/networking/networking.dart';
+import 'package:infinite_scroll_pagination_package/networking/dio/networking_freezed/networking_freezed.dart';
 
-class ApiServiceImpl implements IApiService {
+class ApiServiceImpl implements ApiService {
   final Dio _dio;
   final int defaultMaxRetries;
   final Duration defaultRetryDelay;
@@ -14,18 +14,15 @@ class ApiServiceImpl implements IApiService {
   });
 
   /// Registering Dio and CancelToken
-  //  getIt.registerLazySingleton(() => CancelToken());
-  //  getIt
-  //      .registerSingletonAsync<Dio>(() async => await NetworkHelper.createDio());
+  // getIt.registerLazySingleton(() => CancelToken());
+  // getIt.registerSingletonAsync<Dio>(
+  //   () async => await NetworkHelper.createDio(),
+  // );
 
-  //  getIt.registerSingletonWithDependencies<INetworkService>(
-  //    () => NetworkService(getIt<Dio>(), getIt<CancelToken>()),
-  //    dependsOn: [Dio],
-  //  );
-  /// in main.dart
-  ///  WidgetsFlutterBinding.ensureInitialized();
-  // setupServiceLocator();
-  // await getIt.allReady();
+  // getIt.registerSingletonWithDependencies<IApiService>(
+  //   () => ApiServiceImpl(getIt<Dio>()),
+  //   dependsOn: [Dio],
+  // );
 
   //? How to cancel request
   // CancelToken? _uploadCancelToken = CancelToken();

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:mobile_developer_test/core/helpers/networking/networking.dart';
+import 'package:infinite_scroll_pagination_package/networking/dio/networking_freezed/networking_freezed.dart';
 
 /// Abstract class defining the interface for API services
 

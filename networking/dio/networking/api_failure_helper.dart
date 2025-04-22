@@ -2,36 +2,35 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:hr_app/core/helpers/app_log.dart';
-import 'package:hr_app/core/network/app_exception.dart';
-import 'package:hr_app/core/network/failure.dart';
+import 'package:infinite_scroll_pagination_package/app_log.dart';
+import 'package:infinite_scroll_pagination_package/networking/error/error.dart';
 
 class ApiFailureHandler {
   ApiFailureHandler._();
 
   /// Entry point to handle and convert any thrown error to a [Failure].
-  static Failure handle(dynamic error) {
+  static AppFailure handle(dynamic error) {
     final AppException exception = _mapErrorToAppException(error);
     _logError(error, exception);
-    return _mapAppExceptionToFailure(exception);
+    return exception.toFailure();
   }
 
   /// Maps all types of errors (Dio, Socket, Timeout, etc.) to an [AppException].
   static AppException _mapErrorToAppException(dynamic error) {
     switch (error.runtimeType) {
-      case DioException:
+      case DioException _:
         return _mapDioException(error as DioException);
-      case SocketException:
+      case SocketException _:
         return const NoInternetException();
-      case TimeoutException:
+      case TimeoutException _:
         return const RequestTimeoutException();
-      case LocalStorageException:
+      case LocalStorageException _:
         return LocalStorageException();
-      case FormatException:
-        return const GeneralException("Invalid data format received.");
+      case FormatException _:
+        return const CustomException("Invalid data format received.");
 
       default:
-        return const GeneralException("An unknown error occurred.");
+        return const UnknownException("An unknown error occurred.");
     }
   }
 
@@ -43,7 +42,7 @@ class ApiFailureHandler {
 
     switch (error.type) {
       case DioExceptionType.cancel:
-        return const GeneralException("Request was cancelled.");
+        return const CustomException("Request was cancelled.");
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
@@ -51,11 +50,11 @@ class ApiFailureHandler {
       case DioExceptionType.badResponse:
         return _mapStatusCodeToException(statusCode, message);
       case DioExceptionType.badCertificate:
-        return const GeneralException("Bad certificate received from server.");
+        return const CustomException("Bad certificate received from server.");
       case DioExceptionType.connectionError:
         return const NoInternetException();
       case DioExceptionType.unknown:
-        return GeneralException(error.message ?? "Unexpected Dio error.");
+        return UnknownException(error.message ?? "Unexpected Dio error.");
     }
   }
 
@@ -66,7 +65,7 @@ class ApiFailureHandler {
         return BadRequestException(message);
       case 401:
       case 403:
-        return const UnauthorisedException();
+        return const UnauthorizedException();
       case 422:
         return InvalidInputException(message);
       default:
@@ -89,25 +88,6 @@ class ApiFailureHandler {
       }
     } catch (_) {}
     return "Something went wrong.";
-  }
-
-  /// Maps the final AppException to a domain-level Failure.
-  static Failure _mapAppExceptionToFailure(AppException exception) {
-    switch (exception.runtimeType) {
-      case FetchDataException:
-      case BadRequestException:
-      case CustomStatusException:
-        return ServerFailure(exception.message);
-      case NoInternetException:
-      case RequestTimeoutException:
-        return NetworkFailure(exception.message);
-      case UnauthorisedException:
-        return ServerFailure(exception.message);
-      case LocalStorageException:
-        return LocalStorageFailure(exception.message);
-      default:
-        return UnknownFailure(exception.message);
-    }
   }
 
   /// Logs the original and mapped error types.
