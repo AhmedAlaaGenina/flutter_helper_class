@@ -6,14 +6,12 @@ class AnimatedItemBuilderWidget extends StatefulWidget {
   final Widget child;
   final int index;
   final Duration delay;
-  final bool enableAnimation;
 
   const AnimatedItemBuilderWidget({
     super.key,
     required this.child,
     required this.index,
     this.delay = const Duration(milliseconds: 20),
-    this.enableAnimation = true,
   });
 
   @override
@@ -53,17 +51,12 @@ class _AnimatedItemBuilderWidgetState extends State<AnimatedItemBuilderWidget>
     final actualDelay =
         widget.index < 5 ? widget.delay * widget.index : maxDelay;
 
-    if (widget.enableAnimation) {
-      // Start animation after a delay based on item index for staggered effect
-      Future.delayed(actualDelay, () {
-        if (mounted) {
-          _animationController.forward();
-        }
-      });
-    } else {
-      // If animations disabled, just show item immediately
-      _animationController.value = 1.0;
-    }
+    // Start animation after a delay based on item index for staggered effect
+    Future.delayed(actualDelay, () {
+      if (mounted) {
+        _animationController.forward();
+      }
+    });
   }
 
   @override
@@ -74,10 +67,6 @@ class _AnimatedItemBuilderWidgetState extends State<AnimatedItemBuilderWidget>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enableAnimation) {
-      return widget.child;
-    }
-
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(position: _slideAnimation, child: widget.child),

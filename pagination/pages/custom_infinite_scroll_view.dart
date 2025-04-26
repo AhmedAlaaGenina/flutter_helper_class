@@ -7,16 +7,31 @@ import 'package:infinite_scroll_pagination_package/features/pagination/models/pa
 import 'package:infinite_scroll_pagination_package/features/pagination/widgets/widgets.dart';
 
 class CustomInfiniteScrollView<T> extends StatefulWidget {
+  /// Function to fetch a page of items
   final Future<PaginationResponse<T>> Function(int pageKey, int pageSize)
   fetchPage;
+
+  /// Function to build each item
   final Widget Function(BuildContext, T, int) itemBuilder;
+
+  /// Optional widgets for loading indicators
+  /// These can be customized to show different loading indicators
+  /// when loading the first page or a new page
   final Widget Function(BuildContext)? firstPageProgressIndicator;
   final Widget Function(BuildContext)? newPageProgressIndicator;
-  final Widget Function(BuildContext)? noItemsFound;
-  final Widget Function(BuildContext)? noMoreItems;
+
+  /// Optional widgets for error handling
+  /// These can be customized to show different error indicators
+  /// when loading the first page or a new page
   final Widget Function(BuildContext, String?)? firstPageErrorIndicator;
   final Widget Function(BuildContext, String?, VoidCallback)?
   newPageErrorIndicator;
+
+  /// Optional widgets for empty state and no more items
+  /// These can be customized to show different empty state indicators
+  /// when there are no items found or when all items have been loaded
+  final Widget Function(BuildContext)? noItemsFound;
+  final Widget Function(BuildContext)? noMoreItems;
 
   /// The minimum scrollable distance threshold before loading more
   final double scrollThreshold;
@@ -26,9 +41,6 @@ class CustomInfiniteScrollView<T> extends StatefulWidget {
 
   /// Enable list items caching
   final bool enableCaching;
-
-  /// Enable item animations
-  final bool animateItems;
 
   /// Layout type: list or grid
   final PaginationLayoutType layoutType;
@@ -41,7 +53,12 @@ class CustomInfiniteScrollView<T> extends StatefulWidget {
 
   /// Separator builder for list layout
   final Widget Function(BuildContext, int)? separatorBuilder;
+
+  /// Enable item animations
   final bool enableItemAnimations;
+
+  /// Whether to show skeleton loading when loading more items
+  final bool enableSkeltonLoading;
 
   const CustomInfiniteScrollView({
     super.key,
@@ -56,12 +73,12 @@ class CustomInfiniteScrollView<T> extends StatefulWidget {
     this.scrollThreshold = 200,
     this.pageSize = 20,
     this.enableCaching = true,
-    this.animateItems = true,
     this.layoutType = PaginationLayoutType.list,
     this.gridDelegate,
     this.showHeader = true,
     this.separatorBuilder,
     this.enableItemAnimations = true,
+    this.enableSkeltonLoading = true,
   }) : assert(
          layoutType != PaginationLayoutType.grid || gridDelegate != null,
          'gridDelegate is required for grid layout',
@@ -244,10 +261,13 @@ class _CustomInfiniteScrollViewState<T>
     // Show first page loading indicator
     if (state.items.isEmpty && state.isLoading && !state.isRefreshing) {
       return widget.firstPageProgressIndicator?.call(context) ??
-          SkeletonLoading(
-            itemCount: widget.pageSize,
-            layoutType: widget.layoutType,
-          );
+          (widget.enableSkeltonLoading
+              ? SkeletonLoading(
+                itemCount: widget.pageSize,
+                layoutType: widget.layoutType,
+                gridDelegate: widget.gridDelegate,
+              )
+              : const Center(child: CircularProgressIndicator()));
     }
 
     // Show first page error indicator
@@ -262,9 +282,11 @@ class _CustomInfiniteScrollViewState<T>
     // Show empty indicator when no items and not loading
     if (state.items.isEmpty && !state.isLoading) {
       return widget.noItemsFound?.call(context) ??
-          const EmptyContentWidget(
+          EmptyContentWidget(
             message: 'No items found',
             icon: Icons.inbox_outlined,
+            actionLabel: "Retry",
+            onAction: () => _paginationBloc.add(LoadPageEvent<T>(1)),
           );
     }
 
@@ -302,9 +324,9 @@ class _CustomInfiniteScrollViewState<T>
   Widget _buildGridView(PaginationState<T> state) {
     final itemCount =
         state.items.length +
-        (state.isLoadingMore || state.hasReachedEnd || state.error != null
-            ? 1
-            : 0);
+        (state.isLoadingMore
+            ? 3
+            : (state.hasReachedEnd || state.error != null ? 1 : 0));
 
     return GridView.builder(
       controller: _scrollController,
@@ -322,10 +344,9 @@ class _CustomInfiniteScrollViewState<T>
   ) {
     // Regular item
     if (index < state.items.length) {
-      if (widget.animateItems) {
+      if (widget.enableItemAnimations) {
         return AnimatedItemBuilderWidget(
           index: index,
-          enableAnimation: widget.enableItemAnimations,
           child: widget.itemBuilder(context, state.items[index], index),
         );
       }
@@ -340,10 +361,16 @@ class _CustomInfiniteScrollViewState<T>
   Widget _buildFooter(PaginationState<T> state) {
     if (state.isLoadingMore) {
       return widget.newPageProgressIndicator?.call(context) ??
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(child: CircularProgressIndicator()),
-          );
+          (widget.enableSkeltonLoading
+              ? SkeletonLoading(
+                itemCount: widget.gridDelegate == null ? 3 : 1,
+                layoutType: widget.layoutType,
+                gridDelegate: widget.gridDelegate,
+              )
+              : const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Center(child: CircularProgressIndicator()),
+              ));
     }
 
     if (state.error != null && state.items.isNotEmpty) {

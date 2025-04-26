@@ -12,7 +12,10 @@ class EmptyContentWidget extends StatelessWidget {
     required this.icon,
     this.onAction,
     this.actionLabel,
-  });
+  }): assert(
+    (onAction != null && actionLabel != null) || (onAction == null && actionLabel == null),
+    'onAction and actionLabel must be either both provided or both null',
+  );
 
   @override
   Widget build(BuildContext context) {

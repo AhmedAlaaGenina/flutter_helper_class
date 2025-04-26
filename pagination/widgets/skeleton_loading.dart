@@ -5,37 +5,58 @@ class SkeletonLoading extends StatelessWidget {
   final int itemCount;
   final PaginationLayoutType layoutType;
   final SliverGridDelegate? gridDelegate;
+  final bool isFooter;
 
   const SkeletonLoading({
     super.key,
     required this.itemCount,
     this.layoutType = PaginationLayoutType.list,
     this.gridDelegate,
+    this.isFooter = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isFooter) {
+      return SizedBox(
+        height: layoutType == PaginationLayoutType.grid ? 200 : 100,
+        child: _buildSkeletonContent(),
+      );
+    }
+
+    return _buildSkeletonContent();
+  }
+
+  Widget _buildSkeletonContent() {
     if (layoutType == PaginationLayoutType.grid) {
       return GridView.builder(
-        gridDelegate: gridDelegate ?? const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1.5,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-        ),
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        gridDelegate:
+            gridDelegate ??
+            const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.5,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
         itemCount: itemCount,
         padding: const EdgeInsets.all(16),
         itemBuilder: (context, index) => const SkeletonItem(),
       );
     }
-    
+
     return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+
       itemCount: itemCount,
       padding: const EdgeInsets.all(16),
-      itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: SkeletonItem(height: 80),
-      ),
+      itemBuilder:
+          (context, index) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: SkeletonItem(height: 80),
+          ),
     );
   }
 }
@@ -73,7 +94,7 @@ class _ShimmerEffect extends StatefulWidget {
   State<_ShimmerEffect> createState() => _ShimmerEffectState();
 }
 
-class _ShimmerEffectState extends State<_ShimmerEffect> 
+class _ShimmerEffectState extends State<_ShimmerEffect>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -85,7 +106,7 @@ class _ShimmerEffectState extends State<_ShimmerEffect>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    
+
     _animation = Tween<double>(begin: -2, end: 2).animate(_controller);
   }
 
