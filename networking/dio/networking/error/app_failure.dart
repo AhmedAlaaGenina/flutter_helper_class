@@ -7,7 +7,7 @@ sealed class AppFailure {
 
   @override
   String toString() =>
-      '${runtimeType.toString()}: $message (Code: ${code ?? 'N/A'})';
+      '${runtimeType.toString()}: $message (Code: ${code ?? 'N/A'}, Data: ${data ?? 'N/A'})';
 }
 
 class NetworkFailure extends AppFailure {

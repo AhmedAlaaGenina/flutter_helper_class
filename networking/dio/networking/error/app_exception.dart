@@ -1,5 +1,3 @@
-import 'package:infinite_scroll_pagination_package/networking/error/error.dart';
-
 sealed class AppException implements Exception {
   final String message;
   final String? prefix;
@@ -7,6 +5,7 @@ sealed class AppException implements Exception {
   final Map<String, dynamic>? data;
 
   const AppException(this.message, {this.prefix, this.code, this.data});
+
   @override
   String toString() =>
       '${prefix ?? 'AppException'}: $message (Code: ${code ?? 'N/A'}) ${data != null ? 'Data: $data' : ''}';
@@ -23,7 +22,8 @@ class NoInternetException extends AppException {
 
 class RequestTimeoutException extends AppException {
   const RequestTimeoutException([
-    super.message = "Oops! Something took too long to load.",
+    super.message =
+        'Oops! Something took too long to load. Please check your internet and try again.',
     String prefix = "Timeout",
     int? code,
     Map<String, dynamic>? data,
@@ -83,7 +83,6 @@ class CustomException extends AppException {
     super.data,
   });
 }
-
 
 class UnknownException extends AppException {
   const UnknownException([
