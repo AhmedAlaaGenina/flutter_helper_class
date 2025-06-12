@@ -1,0 +1,22 @@
+flutter_native_splash:
+  web: false
+  # dimensions android 12 if we will have icon_background_color:
+  # small frame 640 * 640 with radius 320
+  # big frame 960 * 960
+  # export with 1x PNG
+  # ======>
+  # dimensions android 12 if we will not have icon_background_color:
+  # small frame 768 * 768 with radius 320
+  # big frame 1152 * 1152
+  # export with 1x PNG
+  # ======>
+  # Customize the parameters below, and run the following command in the terminal:
+  # dart run flutter_native_splash:create OR dart run flutter_native_splash:create --path=flutter_native_splash.yaml
+  # To restore Flutter's default white splash screen, run the following command in the terminal:
+  # dart run flutter_native_splash:remove
+  color: "#FE12AC"
+  image: assets/images/logo.png
+  android_12:
+    image: assets/images/logo12.png
+    color: "#FE12AC"
+    icon_background_color: "#FE12AC"
