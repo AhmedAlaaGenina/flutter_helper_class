@@ -406,6 +406,52 @@ class NotificationHelper {
     }
     return mapped;
   }
+  /// Parse nested payloads from notifications (new way)
+  Map<String, dynamic> parseNestedPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return {};
+
+    try {
+      var decoded = jsonDecode(payload);
+      return _processNestedMap(decoded);
+    } catch (e) {
+      print('Error parsing nested payload: $e');
+      return {};
+    }
+  }
+
+  Map<String, dynamic> _processNestedMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      Map<String, dynamic> result = {};
+
+      data.forEach((key, value) {
+        if (value is Map) {
+          // Recursively process nested maps
+          result[key] = _processNestedMap(value);
+        } else if (value is List) {
+          // Handle lists that might contain maps
+          result[key] = _processNestedList(value);
+        } else {
+          result[key] = value;
+        }
+      });
+
+      return result;
+    }
+    return data is Map ? Map<String, dynamic>.from(data) : {'data': data};
+  }
+
+  List<dynamic> _processNestedList(List<dynamic> list) {
+    return list.map((item) {
+      if (item is Map) {
+        return _processNestedMap(item);
+      } else if (item is List) {
+        return _processNestedList(item);
+      }
+      return item;
+    }).toList();
+  }
+
+
 }
 
 /// Helper class to store notification information
