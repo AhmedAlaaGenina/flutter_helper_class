@@ -1,9 +1,7 @@
-import 'package:fashion/config/routes/routes.dart';
-import 'package:fashion/core/notification_manager/notification_manager.dart';
-import 'package:fashion/core/util/util.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:idara_esign/core/notification_manager/notification_manager.dart';
+import 'package:idara_esign/core/services/logger_service.dart';
 
 class NotificationApi {
   static FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -12,7 +10,7 @@ class NotificationApi {
     try {
       return await messaging.getToken();
     } catch (e) {
-      ePrint('Error getting FCM token: $e');
+      AppLog.e('Error getting FCM token: $e');
     }
     return null;
   }
@@ -31,7 +29,7 @@ class NotificationApi {
       sound: true,
     );
 
-    LocalNotificationApi.init();
+    NotificationHelper().initialize();
     NotificationApi.requestPermission();
     NotificationApi.foregroundNotification();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -62,7 +60,8 @@ class NotificationApi {
   /// Handle background message only not notification
   @pragma('vm:entry-point')
   static Future<void> firebaseMessagingBackgroundHandler(
-      RemoteMessage message) async {
+    RemoteMessage message,
+  ) async {
     debugPrint("Handling a background message: ${message.data}");
   }
 
@@ -79,17 +78,12 @@ class NotificationApi {
         /// to get notification must use flutter_local_notifications
 
         debugPrint(
-            'Message also contained a notification: ${message.notification}');
+          'Message also contained a notification: ${message.notification?.toMap()}',
+        );
 
         /// Interacted with UI in [(Foreground)] (when app is opened)
         /// in LocalNotificationApi.showNotification
-        LocalNotificationApi.showNotification(
-          id: notification.hashCode,
-          title: notification.title,
-          body: notification.body,
-          payload: message.data
-              .toString(), // value that pass from notification to app
-        );
+        NotificationHelper().showNotification(message: message);
       }
     });
   }
@@ -115,23 +109,23 @@ class NotificationApi {
     debugPrint("Opened Notification Data : ${message.data}");
 
     ///we can use normal navigatorKey.currentContext! to Do what we want
-    if (RouteConfigurations.parentNavigatorKey.currentState != null) {
-      if (message.data[NotificationClickAction.clickAction] ==
-          NotificationClickAction.newRequest) {
-        RouteConfigurations.parentNavigatorKey.currentState!.context
-            .pushNamed(AppRoutes.requestsScreen, extra: true);
-      } else if (message.data[NotificationClickAction.clickAction] ==
-          NotificationClickAction.orderUserAction) {
-        RouteConfigurations.router
-            .goNamed(AppRoutes.myOrderScreen, extra: true);
-      } else if (message.data[NotificationClickAction.clickAction] ==
-          NotificationClickAction.orderDashboardAction) {
-        Map sendData = message.data[NotificationClickAction.sendData] as Map;
-        RouteConfigurations.router.goNamed(
-          AppRoutes.clothesItemScreen,
-          pathParameters: {'id': sendData['id']},
-        );
-      }
-    }
+    // if (RouteConfigurations.parentNavigatorKey.currentState != null) {
+    //   if (message.data[NotificationClickAction.clickAction] ==
+    //       NotificationClickAction.newRequest) {
+    //     RouteConfigurations.parentNavigatorKey.currentState!.context
+    //         .pushNamed(AppRoutes.requestsScreen, extra: true);
+    //   } else if (message.data[NotificationClickAction.clickAction] ==
+    //       NotificationClickAction.orderUserAction) {
+    //     RouteConfigurations.router
+    //         .goNamed(AppRoutes.myOrderScreen, extra: true);
+    //   } else if (message.data[NotificationClickAction.clickAction] ==
+    //       NotificationClickAction.orderDashboardAction) {
+    //     Map sendData = message.data[NotificationClickAction.sendData] as Map;
+    //     RouteConfigurations.router.goNamed(
+    //       AppRoutes.clothesItemScreen,
+    //       pathParameters: {'id': sendData['id']},
+    //     );
+    //   }
+    // }
   }
 }
