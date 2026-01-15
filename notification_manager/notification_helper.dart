@@ -1,7 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:http/http.dart' as http;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 // NOTE: Import the following packages for platform-specific implementations
@@ -36,8 +42,15 @@ class NotificationHelper {
     if (Platform.isWindows) {
       return;
     }
-    final String? timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName!));
+    final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
+    final String tzName = tzInfo.identifier;
+
+    try {
+      tz.setLocalLocation(tz.getLocation(tzName));
+    } catch (e) {
+      debugPrint('Timezone not found: $tzName, falling back to UTC. Error: $e');
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
   }
 
   /// Initialize notification settings for all platforms
@@ -50,34 +63,33 @@ class NotificationHelper {
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const LinuxInitializationSettings linuxSettings =
-        LinuxInitializationSettings(
-      defaultActionName: 'Open notification',
-    );
+        LinuxInitializationSettings(defaultActionName: 'Open notification');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(
-      android: androidInitializationSettings,
-      iOS: iosSettings,
-      macOS: iosSettings,
-      linux: linuxSettings,
-    );
+          android: androidInitializationSettings,
+          iOS: iosSettings,
+          macOS: iosSettings,
+          linux: linuxSettings,
+        );
 
     // Create high importance channel for Android
     if (Platform.isAndroid) {
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(_channel);
     }
     await requestPermissions();
-    final notificationAppLaunchDetails =
-        await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    final notificationAppLaunchDetails = await flutterLocalNotificationsPlugin
+        .getNotificationAppLaunchDetails();
 
     if (notificationAppLaunchDetails != null &&
         notificationAppLaunchDetails.didNotificationLaunchApp) {
@@ -98,63 +110,51 @@ class NotificationHelper {
     if (Platform.isIOS) {
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     } else if (Platform.isAndroid) {
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     } else if (Platform.isMacOS) {
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+            MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     }
   }
 
   /// Show an immediate notification
-  Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
-    String? bigPicture,
-    String? largeIcon,
-  }) async {
-    await flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      _notificationDetails(bigPicture: bigPicture, largeIcon: largeIcon),
-      payload: payload,
+  Future<void> showNotification({required RemoteMessage message}) async {
+    var notificationDetails = await _notificationDetails(message);
+    flutterLocalNotificationsPlugin.show(
+      message.notification!.hashCode,
+      message.notification!.title,
+      message.notification!.body,
+      notificationDetails,
+      payload: message.data
+          .toString(), // value that pass from notification to app
     );
   }
 
   /// Schedule a notification for a specific date and time
   Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
+    required RemoteMessage message,
     required DateTime scheduledDate,
-    String? payload,
   }) async {
+    var notificationDetails = await _notificationDetails(message);
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
+      message.notification!.hashCode,
+      message.notification!.title,
+      message.notification!.body,
       tz.TZDateTime.from(scheduledDate, tz.local),
-      _notificationDetails(),
+      notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: payload,
+      payload: message.data.toString(),
     );
   }
 
@@ -168,18 +168,19 @@ class NotificationHelper {
   }) async {
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      _channel.id,
-      _channel.name,
-      channelDescription: _channel.description,
-      importance: Importance.low,
-      priority: Priority.low,
-      showProgress: true,
-      maxProgress: maxProgress,
-      progress: progress,
-    );
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.low,
+          priority: Priority.low,
+          showProgress: true,
+          maxProgress: maxProgress,
+          progress: progress,
+        );
 
-    final NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidDetails);
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidDetails,
+    );
 
     await flutterLocalNotificationsPlugin.show(
       id,
@@ -203,15 +204,18 @@ class NotificationHelper {
       importance: Importance.max,
       priority: Priority.high,
       sound: RawResourceAndroidNotificationSound(
-          soundFile.split('.').first), // Remove file extension
+        soundFile.split('.').first,
+      ), // Remove file extension
     );
 
     DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       sound: soundFile,
     );
 
-    NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidDetails, iOS: iosDetails);
+    NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     await flutterLocalNotificationsPlugin.show(
       id,
@@ -230,16 +234,17 @@ class NotificationHelper {
     for (var i = 0; i < notifications.length; i++) {
       final AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
-        _channel.id,
-        _channel.name,
-        channelDescription: _channel.description,
-        importance: Importance.max,
-        priority: Priority.high,
-        groupKey: groupKey,
-      );
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+            groupKey: groupKey,
+          );
 
-      final NotificationDetails notificationDetails =
-          NotificationDetails(android: androidDetails);
+      final NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+      );
 
       await flutterLocalNotificationsPlugin.show(
         i,
@@ -252,17 +257,18 @@ class NotificationHelper {
     // Show summary notification
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      _channel.id,
-      _channel.name,
-      channelDescription: _channel.description,
-      importance: Importance.max,
-      priority: Priority.high,
-      groupKey: groupKey,
-      setAsGroupSummary: true,
-    );
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          groupKey: groupKey,
+          setAsGroupSummary: true,
+        );
 
-    final NotificationDetails notificationDetails =
-        NotificationDetails(android: androidDetails);
+    final NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     await flutterLocalNotificationsPlugin.show(
       notifications.length,
@@ -285,14 +291,16 @@ class NotificationHelper {
   /// Check if notifications are enabled
   Future<bool> areNotificationsEnabled() async {
     if (Platform.isAndroid) {
-      final androidImplementation =
-          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       return await androidImplementation?.areNotificationsEnabled() ?? false;
     } else if (Platform.isIOS) {
-      final iosImplementation =
-          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
+      final iosImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
       return await iosImplementation?.requestPermissions(
             alert: true,
             badge: true,
@@ -311,9 +319,10 @@ class NotificationHelper {
   /// Get active notifications (Android only)
   Future<List<ActiveNotification>> getActiveNotifications() async {
     if (Platform.isAndroid) {
-      final androidImplementation =
-          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       return await androidImplementation?.getActiveNotifications() ?? [];
     }
     return [];
@@ -321,34 +330,54 @@ class NotificationHelper {
 
   @pragma('vm:entry-point')
   static void notificationTapBackground(
-      NotificationResponse notificationResponse) {
+    NotificationResponse notificationResponse,
+  ) {
     // handle actions
     debugPrint(
-        "onDidReceiveBackgroundNotificationResponse: ${notificationResponse.payload}");
+      "onDidReceiveBackgroundNotificationResponse: ${notificationResponse.payload}",
+    );
+  }
+
+  static Future<Uint8List> _getByteArrayFromUrl(String url) async {
+    final http.Response response = await http.get(Uri.parse(url));
+    return response.bodyBytes;
+  }
+
+  // Helper method to get byte array from asset
+  static Future<Uint8List> _getByteArrayFromAsset(String assetPath) async {
+    final ByteData byteData = await rootBundle.load(assetPath);
+    return byteData.buffer.asUint8List();
   }
 
   // Helper method for notification details
-  NotificationDetails _notificationDetails({
-    String? bigPicture,
-    String? largeIcon,
-  }) {
+  static Future<NotificationDetails> _notificationDetails(
+    RemoteMessage message,
+  ) async {
+    final ByteArrayAndroidBitmap? bigPicture =
+        message.notification?.android?.imageUrl == null
+        ? null
+        : ByteArrayAndroidBitmap(
+            await _getByteArrayFromUrl(
+              message.notification!.android!.imageUrl!,
+            ),
+          );
+
+    final BigPictureStyleInformation? bigPictureStyleInformation =
+        bigPicture == null
+        ? null
+        : BigPictureStyleInformation(bigPicture, largeIcon: bigPicture);
+
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      _channel.id,
-      _channel.name,
-      channelDescription: _channel.description,
-      importance: Importance.max,
-      priority: Priority.high,
-      // change icon background
-      color: const Color(0xffCF989F),
-      styleInformation: bigPicture != null
-          ? BigPictureStyleInformation(
-              FilePathAndroidBitmap(bigPicture),
-              largeIcon:
-                  largeIcon != null ? FilePathAndroidBitmap(largeIcon) : null,
-            )
-          : null,
-    );
+          _channel.id, // channel id
+          _channel.name, // channel name
+          channelDescription: _channel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          // change icon background
+          color: const Color(0xffCF989F),
+          styleInformation: bigPictureStyleInformation,
+        );
     // Configure iOS/macOS-specific notification details
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -406,6 +435,7 @@ class NotificationHelper {
     }
     return mapped;
   }
+
   /// Parse nested payloads from notifications (new way)
   Map<String, dynamic> parseNestedPayload(String? payload) {
     if (payload == null || payload.isEmpty) return {};
@@ -450,8 +480,6 @@ class NotificationHelper {
       return item;
     }).toList();
   }
-
-
 }
 
 /// Helper class to store notification information
@@ -460,9 +488,5 @@ class NotificationInfo {
   final String body;
   final String? payload;
 
-  NotificationInfo({
-    required this.title,
-    required this.body,
-    this.payload,
-  });
+  NotificationInfo({required this.title, required this.body, this.payload});
 }
