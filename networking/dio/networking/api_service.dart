@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:infinite_scroll_pagination_package/networking/networking.dart';
+import 'package:flutter/foundation.dart';
+import 'package:idara_esign/core/networking/networking.dart';
 
-class ApiServiceImpl implements IApiService {
+class ApiService implements IApiService {
   final Dio _dio;
   final int defaultMaxRetries;
   final Duration defaultRetryDelay;
-  ApiServiceImpl(
+  ApiService(
     this._dio, {
     this.defaultMaxRetries = 3,
     this.defaultRetryDelay = const Duration(seconds: 2),
@@ -233,12 +234,32 @@ class ApiServiceImpl implements IApiService {
   // } catch (e) {
   //   print('Error uploading file: $e');
   // }
+
+  // OR 
+
+  //  final response = await apiClient.multipartRequest(
+  //     ApiEndpoints.userSignatures,
+  //     'POST',
+  //     files: {
+  //       'signature_file': FileData(
+  //         filePath: kIsWeb ? null : signatureFilePath,
+  //         bytes: kIsWeb ? signatureBytes : null,
+  //         filename: signatureFilePath.split('/').last,
+  //         contentType: 'image/png',
+  //       ),
+  //     },
+  //     data: {
+  //       'name': name,
+  //       'signature_type': signatureType,
+  //     },
+  //   );
+
   // Multipart request helper
   @override
   Future<Response<T>> multipartRequest<T>(
     String path,
     String method, {
-    required Map<String, dynamic> files,
+    required Map<String, FileData> files,
     Map<String, dynamic>? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -249,10 +270,25 @@ class ApiServiceImpl implements IApiService {
   }) async {
     options = _mergeRetryOptions(options, retryOptions);
 
+    // Process files based on type
+    final Map<String, dynamic> processedFiles = {};
+
+    for (var entry in files.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      // Handle FileData object
+      processedFiles[key] = await _createMultipartFile(
+        filePath: value.filePath,
+        bytes: value.bytes,
+        filename: value.filename,
+        contentType: value.contentType,
+      );
+    }
+
     final formData = FormData.fromMap({
       if (data != null) ...data,
-      for (var entry in files.entries)
-        entry.key: await MultipartFile.fromFile(entry.value),
+      ...processedFiles,
     });
 
     final response = await _dio.request<T>(
@@ -265,6 +301,40 @@ class ApiServiceImpl implements IApiService {
       onReceiveProgress: onReceiveProgress,
     );
     return response;
+  }
+
+  /// Helper method to create MultipartFile based on platform
+  Future<MultipartFile> _createMultipartFile({
+    String? filePath,
+    Uint8List? bytes,
+    required String filename,
+    String? contentType,
+  }) async {
+    DioMediaType? mediaType;
+    if (contentType != null) {
+      final parts = contentType.split('/');
+      if (parts.length == 2) {
+        mediaType = DioMediaType(parts[0], parts[1]);
+      }
+    }
+
+    if (kIsWeb || bytes != null) {
+      // Web or explicit bytes
+      return MultipartFile.fromBytes(
+        bytes ?? [],
+        filename: filename,
+        contentType: mediaType,
+      );
+    } else if (filePath != null) {
+      // Mobile with file path
+      return await MultipartFile.fromFile(
+        filePath,
+        filename: filename,
+        contentType: mediaType,
+      );
+    } else {
+      throw ArgumentError('Either filePath or bytes must be provided');
+    }
   }
 
   // Helper method to merge retry options
@@ -381,7 +451,7 @@ class ApiServiceImpl implements IApiService {
   bool _defaultRetryCondition(DioException error) {
     return error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
-        error.error is SocketException ||
+        (!kIsWeb && error.error is SocketException) ||
         (error.response?.statusCode != null &&
             error.response!.statusCode! >= 500);
   }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class RetryInterceptor extends Interceptor {
   final Dio dio;
@@ -20,7 +21,9 @@ class RetryInterceptor extends Interceptor {
 
   @override
   Future<void> onError(
-      DioException err, ErrorInterceptorHandler handler) async {
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     final extraMap = err.requestOptions.extra;
     final retryCount = extraMap['retryCount'] ?? 0;
     final maxRetries = extraMap['maxRetries'] ?? this.maxRetries;
@@ -57,7 +60,7 @@ class RetryInterceptor extends Interceptor {
   bool shouldRetry(DioException err) {
     // err.type == DioExceptionType.connectionTimeout ||
     return err.type == DioExceptionType.receiveTimeout ||
-        (err.error is SocketException) ||
+        (!kIsWeb && err.error is SocketException) ||
         (err.response?.statusCode != null &&
             err.response!.statusCode! >= 500) ||
         (shouldRetryOnTimeout &&
@@ -69,6 +72,7 @@ class RetryInterceptor extends Interceptor {
     final exponentialDelay = baseDelay * (pow(2, retryCount) as int);
     final withJitter = exponentialDelay * (0.5 + Random().nextDouble() / 2);
     return Duration(
-        milliseconds: min(withJitter.inMilliseconds, maxDelay.inMilliseconds));
+      milliseconds: min(withJitter.inMilliseconds, maxDelay.inMilliseconds),
+    );
   }
 }

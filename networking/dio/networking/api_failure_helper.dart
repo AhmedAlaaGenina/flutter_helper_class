@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:infinite_scroll_pagination_package/app_log.dart';
-import 'package:infinite_scroll_pagination_package/networking/error/error.dart';
+import 'package:flutter/foundation.dart';
+import 'package:idara_esign/core/networking/networking.dart';
+import 'package:idara_esign/core/services/logger_service.dart';
 
 class ApiFailureHandler {
   ApiFailureHandler._();
@@ -17,18 +18,17 @@ class ApiFailureHandler {
 
   /// Maps all types of errors (Dio, Socket, Timeout, etc.) to an [AppException].
   static AppException _mapErrorToAppException(dynamic error) {
-    switch (error.runtimeType) {
-      case DioException _:
-        return _mapDioException(error as DioException);
-      case SocketException _:
+    switch (error) {
+      case DioException():
+        return _mapDioException(error);
+      case SocketException() when !kIsWeb:
         return const NoInternetException();
-      case TimeoutException _:
+      case TimeoutException():
         return const RequestTimeoutException();
-      case LocalStorageException _:
-        return LocalStorageException();
-      case FormatException _:
+      case CacheException():
+        return const CacheException();
+      case FormatException():
         return const CustomException("Invalid data format received.");
-
       default:
         return const UnknownException("An unknown error occurred.");
     }
@@ -39,7 +39,6 @@ class ApiFailureHandler {
     final int statusCode = error.response?.statusCode ?? 0;
     final dynamic data = error.response?.data;
     final String message = _extractMessage(data);
-
     switch (error.type) {
       case DioExceptionType.cancel:
         return const CustomException("Request was cancelled.");
@@ -65,7 +64,7 @@ class ApiFailureHandler {
         return BadRequestException(message);
       case 401:
       case 403:
-        return const UnauthorizedException();
+        return UnauthorizedException(message);
       case 422:
         return InvalidInputException(message);
       default:

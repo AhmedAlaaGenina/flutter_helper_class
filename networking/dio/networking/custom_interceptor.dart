@@ -1,74 +1,151 @@
-// import 'package:dio/dio.dart';
-// import 'package:flutter/foundation.dart';
-// import 'package:hr_app/cache/secure_storage.dart';
-// import 'package:hr_app/core/helpers/app_log.dart';
-// import 'package:hr_app/core/network/network.dart';
-// import 'package:hr_app/main.dart';
-// import 'package:hr_app/modules/auth_module/view/login_screen.dart';
-// import 'package:hr_app/setup_service_locator.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:idara_esign/app.dart';
+import 'package:idara_esign/di/injection_container.dart' as di;
+import 'package:idara_esign/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:idara_esign/features/auth/presentation/bloc/auth_event.dart';
+import 'package:idara_esign/generated/l10n.dart';
 
-// class CustomInterceptor extends Interceptor {
-//   final SecureStorage _secureStorage = SecureStorage();
-//   final networkService = sl<NetworkService>();
+import '../constants/api_constants.dart';
+import '../constants/storage_keys.dart';
+import '../security/secure_storage.dart';
 
-//   @override
-//   void onRequest(
-//       RequestOptions options, RequestInterceptorHandler handler) async {
-//     if (networkService.shouldCancelApiCalls()) {
-//       return handler.reject(DioException(
-//         error: 'API call canceled',
-//         type: DioExceptionType.cancel,
-//         requestOptions: options,
-//       ));
-//     }
+class CustomInterceptor extends Interceptor {
+  final SecureStorage _secureStorage;
 
-//     final token = await _secureStorage.readToken() ?? "";
+  static DateTime? _last401Time;
+  static const Duration _debounceWindow = Duration(seconds: 5);
 
-//     options.headers.addAll({
-//       "Connection": "keep-alive",
-//       "Cookie": "session_id=$token",
-//       "Content-Type": "application/json",
-//       "Accept": "*/*",
-//     });
+  CustomInterceptor({required SecureStorage secureStorage})
+    : _secureStorage = secureStorage;
 
-//     handler.next(options);
-//   }
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    try {
+      final token = await _secureStorage.read(key: StorageKeys.authToken);
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (e) {
+      debugPrint('Failed to attach auth token: $e');
+    }
+    handler.next(options);
+  }
 
-//   @override
-//   void onResponse(Response response, ResponseInterceptorHandler handler) async {
-//     final statusCode = response.data?['statusCode'];
-//     AppLog.d("onResponse statusCode: $statusCode");
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final transformedError = _transformError(err);
 
-//     if (statusCode == -700) {
-//       networkService.cancelAllApiCalls();
-//       return handler.reject(DioException(
-//         error: 'API call canceled',
-//         type: DioExceptionType.cancel,
-//         requestOptions: response.requestOptions,
-//       ));
-//     }
+    // Handle 401 Unauthorized with debounced logout
+    if (_isUnauthorizedResponse(err) && _shouldHandle401(err.requestOptions)) {
+      _handleUnauthorized();
+    }
 
-//     if (statusCode == -600) {
-//       if (kDebugMode) {
-//         AppLog.d("onResponse statusCode -600");
-//       }
+    handler.next(transformedError);
+  }
 
-//       await _secureStorage.writeToken(" ");
-//       // TODO:❗Don't navigate here directly. Better to emit an event or handle it at a higher level.
-//       navigatorKey.currentState?.pushReplacementNamed(LoginScreen.routeName);
-//       return handler.reject(DioException(
-//         error: 'Session expired',
-//         type: DioExceptionType.unknown,
-//         requestOptions: response.requestOptions,
-//       ));
-//     }
+  DioException _transformError(DioException err) {
+    final message = switch (err.type) {
+      DioExceptionType.connectionTimeout => S.current.connectionTimeout,
+      DioExceptionType.sendTimeout => S.current.requestTimeout,
+      DioExceptionType.receiveTimeout => S.current.serverTooLongToRespond,
+      DioExceptionType.cancel => S.current.requestCancelled,
+      DioExceptionType.unknown => S.current.networkErrorCheckConnection,
+      DioExceptionType.badResponse => _getResponseErrorMessage(err),
+      _ => S.current.unexpectedError,
+    };
 
-//     handler.next(response);
-//   }
+    return err.copyWith(message: message);
+  }
 
-//   @override
-//   void onError(DioException err, ErrorInterceptorHandler handler) {
-//     AppLog.e("Dio Error: ${err.message}", "DioInterceptor");
-//     handler.next(err); // Just forward the original DioException
-//   }
-// }
+  String _getResponseErrorMessage(DioException err) {
+    final statusCode = err.response?.statusCode;
+
+    return switch (statusCode) {
+      400 => S.current.badRequestCheckInput,
+      401 => S.current.unauthorizedPleaseLogin,
+      403 => S.current.accessForbidden,
+      404 => S.current.resourceNotFound,
+      500 => S.current.serverErrorTryLater,
+      503 => S.current.serviceUnavailableTryLater,
+      _ => _extractBackendMessage(err) ?? S.current.genericErrorTryAgain,
+    };
+  }
+
+  String? _extractBackendMessage(DioException err) {
+    final data = err.response?.data;
+    if (data is! Map<String, dynamic>) return null;
+
+    final message = data['message'];
+    return (message is String && message.trim().isNotEmpty)
+        ? message.trim()
+        : null;
+  }
+
+  bool _isUnauthorizedResponse(DioException err) {
+    return err.type == DioExceptionType.badResponse &&
+        err.response?.statusCode == 401;
+  }
+
+  bool _shouldHandle401(RequestOptions options) {
+    return !_isLoginRequest(options) && !_isLogoutOrRevokeRequest(options);
+  }
+
+  bool _isLoginRequest(RequestOptions options) {
+    return options.path.contains(ApiEndpoints.login);
+  }
+
+  bool _isLogoutOrRevokeRequest(RequestOptions options) {
+    final path = options.path;
+    return path.contains(ApiEndpoints.revokeAllTokens) ||
+        path.contains('logout') ||
+        path.contains('revoke');
+  }
+
+  void _handleUnauthorized() {
+    if (!_shouldTrigger401Handler()) return;
+
+    _last401Time = DateTime.now();
+    _showSessionExpiredSnackBar();
+    _triggerLogout();
+  }
+
+  bool _shouldTrigger401Handler() {
+    if (_last401Time == null) return true;
+
+    final timeSinceLastTrigger = DateTime.now().difference(_last401Time!);
+    if (timeSinceLastTrigger < _debounceWindow) {
+      debugPrint('🕒 401 already handled recently - skipping duplicate');
+      return false;
+    }
+
+    return true;
+  }
+
+  void _showSessionExpiredSnackBar() {
+    try {
+      final messenger = rootScaffoldMessengerKey.currentState;
+      messenger?.removeCurrentSnackBar();
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(S.current.sessionExpiredPleaseLogin),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to show session expired snackbar: $e');
+    }
+  }
+
+  void _triggerLogout() {
+    try {
+      di.getIt<AuthBloc>().add(const LogoutEvent());
+    } catch (e) {
+      debugPrint('Failed to trigger logout: $e');
+    }
+  }
+}

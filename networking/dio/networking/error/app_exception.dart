@@ -1,3 +1,5 @@
+import 'package:idara_esign/core/networking/error/app_failure.dart';
+
 sealed class AppException implements Exception {
   final String message;
   final String? prefix;
@@ -30,10 +32,10 @@ class RequestTimeoutException extends AppException {
   ]) : super(prefix: prefix, code: code, data: data);
 }
 
-class LocalStorageException extends AppException {
-  const LocalStorageException([
-    super.message = "Local storage error occurred.",
-    String prefix = "Storage",
+class CacheException extends AppException {
+  const CacheException([
+    super.message = "Cache error occurred.",
+    String prefix = "Cache",
     int? code,
     Map<String, dynamic>? data,
   ]) : super(prefix: prefix, code: code, data: data);
@@ -97,7 +99,7 @@ extension AppExceptionToFailure on AppException {
   AppFailure toFailure() => switch (this) {
     NoInternetException _ ||
     RequestTimeoutException _ => NetworkFailure(message, code, data),
-    LocalStorageException _ => LocalStorageFailure(message, code, data),
+    CacheException _ => CacheFailure(message, code, data),
     BadRequestException _ ||
     UnauthorizedException _ ||
     InvalidInputException _ ||

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:infinite_scroll_pagination_package/networking/networking.dart';
+import 'package:idara_esign/core/networking/networking.dart';
 
 /// Abstract class defining the interface for API services
 
@@ -88,7 +88,7 @@ abstract class IApiService {
   Future<Response<T>> multipartRequest<T>(
     String path,
     String method, {
-    required Map<String, dynamic> files,
+    required Map<String, FileData> files,
     Map<String, dynamic>? data,
     Map<String, dynamic>? queryParameters,
     Options? options,

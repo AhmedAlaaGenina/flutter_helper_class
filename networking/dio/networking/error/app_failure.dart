@@ -18,9 +18,9 @@ class ServerFailure extends AppFailure {
   const ServerFailure(super.message, [super.code, super.data]);
 }
 
-class LocalStorageFailure extends AppFailure {
-  const LocalStorageFailure([
-    super.message = "Local storage failure.",
+class CacheFailure extends AppFailure {
+  const CacheFailure(
+    super.message, [
     super.code,
     super.data,
   ]);
