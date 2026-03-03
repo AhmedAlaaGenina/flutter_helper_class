@@ -199,6 +199,8 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
                     textInputAction: widget.textInputAction,
                     cursorColor: widget.cursorColor,
                     decoration: InputDecoration(
+                      isDense: true,
+                      errorMaxLines: 3,
                       isCollapsed: widget.isCollapsed,
                       counterText: widget.maxLength != null
                           ? '$charLength / ${widget.maxLength}'
