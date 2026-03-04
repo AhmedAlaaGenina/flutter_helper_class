@@ -50,9 +50,9 @@ warn()  { echo -e "${YELLOW}⚠️  $1${NC}"; }
 error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 
 # ── Configuration (UPDATE THESE FOR YOUR MACHINE) ──
-GITHUB_PAT="${GITHUB_PAT:-YOUR_GITHUB_PAT_HERE}"
-FIGMA_API_TOKEN="${FIGMA_API_TOKEN:-YOUR_FIGMA_API_TOKEN_HERE}"
-STITCH_API_KEY="${STITCH_API_KEY:-YOUR_STITCH_API_KEY_HERE}"
+GITHUB_PAT="token"
+FIGMA_API_TOKEN="token"
+STITCH_API_KEY="token"
 
 MCP_DIR="$HOME/.mcp-servers"
 CONFIG_DIR="$HOME/.gemini/antigravity"
