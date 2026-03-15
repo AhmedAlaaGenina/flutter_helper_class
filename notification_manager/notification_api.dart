@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:idara_esign/config/routes/app_router.dart';
 import 'package:idara_esign/core/notification_manager/notification_manager.dart';
 import 'package:idara_esign/core/services/logger_service.dart';
 
@@ -107,6 +108,8 @@ class NotificationApi {
 
     // if app in Background or Terminated that will work fine
     debugPrint("Opened Notification Data : ${message.data}");
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) return;
 
     ///we can use normal navigatorKey.currentContext! to Do what we want
     // if (RouteConfigurations.parentNavigatorKey.currentState != null) {

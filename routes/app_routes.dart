@@ -1,23 +1,23 @@
-class AppRoutes {
-  AppRoutes._();
+class AppRoutesPath {
+  AppRoutesPath._();
+  static const String splash = '/splash';
+  static const String login = '/login';
+  static const String overview = '/overview';
+  static const String users = '/users';
+  static const String wallets = '/wallets';
+  static const String payments = '/payments';
+  static const String packages = '/packages';
+  static const String settings = '/settings';
+}
 
-  static const String initLocation = '/';
-  static const String home = 'home';
-  static const String authScreen = "authScreen";
-  static const String homeScreen = 'homeScreen';
-  static const String myClosetScreen = 'myClosetScreen';
-  static const String myOrderScreen = 'myOrdersScreen';
-  static const String filterScreen = 'filterScreen';
-  static const String favouriteScreen = 'favouriteScreen';
-  static const String clothesItemScreen = 'clothesItemScreen';
-  static const String chatScreen = 'chatScreen';
-  static const String orderScreen = 'orderScreen';
-  static const String addItemScreen = 'addItemScreen';
-  static const String requestsScreen = 'requestsScreen';
-  static const String profileScreen = 'profileScreen';
-  static const String accountScreen = 'accountScreen';
-  static const String settingScreen = 'settingScreen';
-  static const String preferencesScreen = 'preferencesScreen';
-  static const String photoInstructionScreen = 'photoInstructionScreen';
-  static const String cliqPayment = 'cliqPayment';
+class AppRoutesName {
+  AppRoutesName._();
+  static const String splash = 'splash';
+  static const String login = 'login';
+  static const String overview = 'overview';
+  static const String users = 'users';
+  static const String wallets = 'wallets';
+  static const String payments = 'payments';
+  static const String packages = 'packages';
+  static const String settings = 'settings';
 }

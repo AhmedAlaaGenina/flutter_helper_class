@@ -1,7 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Clear keychain on reinstall 
-/// call this function on first of init and before of di.init()  
+/// Clear keychain on reinstall
+/// call this function on first of init and before of di.init()
 // Future<void> _clearKeychainOnReinstall() async {
 //   final prefs = await SharedPreferences.getInstance();
 //   final hasRunBefore = prefs.getBool('has_run_before') ?? false;
@@ -13,21 +13,29 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 //     await prefs.setBool('has_run_before', true);
 //   }
 // }
+/* =========================
+   LOCAL PERSISTENCE
+========================= */
+// Future<void> _registerLocalPersistence() async {
+//   final sharedPreferences = await SharedPreferences.getInstance();
+//   const flutterSecureStorage = FlutterSecureStorage();
 
+//   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+//   getIt.registerLazySingleton<FlutterSecureStorage>(() => flutterSecureStorage);
+
+//   getIt.registerLazySingleton<CacheStorage>(
+//     () => CacheStorageImpl(getIt<SharedPreferences>()),
+//   );
+
+//   getIt.registerLazySingleton<SecureStorage>(
+//     () => SecureStorageImpl(getIt<FlutterSecureStorage>()),
+//   );
+// }
 abstract class SecureStorage {
-  /// Save a secure value
   Future<void> write({required String key, required String value});
-
-  /// Read a secure value
   Future<String?> read({required String key});
-
-  /// Delete a secure value
   Future<void> delete({required String key});
-
-  /// Delete all secure values
   Future<void> deleteAll();
-
-  /// Check if a key exists
   Future<bool> containsKey({required String key});
 }
 

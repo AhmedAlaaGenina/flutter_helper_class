@@ -3,11 +3,14 @@ import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:idara_esign/config/routes/app_router.dart';
+import 'package:idara_esign/config/routes/route_names.dart';
+import 'package:idara_esign/core/services/logger_service.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 // NOTE: Import the following packages for platform-specific implementations
@@ -136,8 +139,9 @@ class NotificationHelper {
       message.notification!.title,
       message.notification!.body,
       notificationDetails,
-      payload: message.data
-          .toString(), // value that pass from notification to app
+      payload: jsonEncode(
+        message.data,
+      ), // value that pass from notification to app
     );
   }
 
@@ -154,7 +158,7 @@ class NotificationHelper {
       tz.TZDateTime.from(scheduledDate, tz.local),
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: message.data.toString(),
+      payload: jsonEncode(message.data),
     );
   }
 
@@ -374,8 +378,6 @@ class NotificationHelper {
           channelDescription: _channel.description,
           importance: Importance.max,
           priority: Priority.high,
-          // change icon background
-          color: const Color(0xffCF989F),
           styleInformation: bigPictureStyleInformation,
         );
     // Configure iOS/macOS-specific notification details
@@ -396,6 +398,9 @@ class NotificationHelper {
   void onTapNotification(NotificationResponse details) {
     debugPrint("onDidReceiveNotificationResponse: ${details.payload}");
     var map = convertPayloadToMap(details.payload!);
+    final context = rootNavigatorKey.currentContext;
+    if (context == null) return;
+    context.go(Routes.userDocuments);
 
     ///key.currentContext!
     // if (RouteConfigurations.parentNavigatorKey.currentState != null) {
@@ -444,7 +449,7 @@ class NotificationHelper {
       var decoded = jsonDecode(payload);
       return _processNestedMap(decoded);
     } catch (e) {
-      print('Error parsing nested payload: $e');
+      AppLog.e('Error parsing nested payload: $e');
       return {};
     }
   }
